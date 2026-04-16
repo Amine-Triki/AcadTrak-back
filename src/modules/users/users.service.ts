@@ -1,10 +1,43 @@
 import userModel from "./user.model.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import type { SignOptions } from "jsonwebtoken";
 import { registerSchema, loginSchema } from "./user-validation.js";
 import { ZodError } from "zod";
-import { env } from "../../config/env.js";
+import { signAuthToken } from "../../utils/jwt.js";
+
+type UserRole = "student" | "teacher" | "admin";
+
+interface UserResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  country: string;
+  email: string;
+  role: UserRole;
+}
+
+interface AuthSuccessData {
+  token: string;
+  user: UserResponse;
+}
+
+const toUserResponse = (user: {
+  _id: unknown;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  country: string;
+  email: string;
+  role: UserRole;
+}): UserResponse => ({
+  id: String(user._id),
+  firstName: user.firstName,
+  lastName: user.lastName,
+  userName: user.userName,
+  country: user.country,
+  email: user.email,
+  role: user.role,
+});
 
 interface RegisterParams {
   firstName: string;
@@ -36,7 +69,7 @@ export const register = async ({
 
     const findUser = await userModel.findOne({ email, deletedAt: null });
     if (findUser) {
-      return { data: "User already exists", statusCode: 400 };
+      return { data: { message: "User already exists" }, statusCode: 400 };
     }
 
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
@@ -52,23 +85,29 @@ export const register = async ({
     });
     await newUser.save();
 
+    const user = toUserResponse(newUser);
+    const token = signAuthToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
     return {
-      data: generateJWT({
-        id: String(newUser._id),
-        email: newUser.email,
-        role: newUser.role,
-      }),
-      statusCode: 200,
+      data: {
+        token,
+        user,
+      } satisfies AuthSuccessData,
+      statusCode: 201,
     };
   } catch (error) {
     if (error instanceof ZodError) {
       return {
-        data: error.issues[0]?.message || "Validation error",
+        data: { message: error.issues[0]?.message || "Validation error" },
         statusCode: 400
       };
     }
     return {
-      data: (error as any)?.message || "Unknown error",
+      data: { message: (error as any)?.message || "Unknown error" },
       statusCode: 400
     };
   }
@@ -89,35 +128,60 @@ export const login = async ({ email, password }: LoginParams) => {
     });
 
     if (!findUser) {
-      return { data: " Incorrect email or password !", statusCode: 400 };
+      return { data: { message: "Incorrect email or password" }, statusCode: 400 };
     }
 
     const passwordMatch = await bcrypt.compare(validatedData.password, findUser.password);
     if (passwordMatch) {
+      const user = toUserResponse(findUser);
+      const token = signAuthToken({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
       return {
-        data: generateJWT({
-          id: String(findUser._id),
-          email: findUser.email,
-          role: findUser.role,
-        }),
+        data: {
+          token,
+          user,
+        } satisfies AuthSuccessData,
         statusCode: 200,
       };
     }
 
-    return { data: " Incorrect email or password !", statusCode: 400 };
+    return { data: { message: "Incorrect email or password" }, statusCode: 400 };
   } catch (error) {
     if (error instanceof ZodError) {
       return {
-        data: error.issues[0]?.message || "Validation error",
+        data: { message: error.issues[0]?.message || "Validation error" },
         statusCode: 400
       };
     }
     return {
-      data: (error as any)?.message || "Unknown error",
+      data: { message: (error as any)?.message || "Unknown error" },
       statusCode: 400
     };
   }
 }   
+
+export const getCurrentUser = async (userId: string) => {
+  try {
+    const user = await userModel
+      .findOne({ _id: userId, deletedAt: null })
+      .select("_id firstName lastName userName country email role");
+
+    if (!user) {
+      return { data: { message: "User not found" }, statusCode: 404 };
+    }
+
+    return {
+      data: { user: toUserResponse(user) },
+      statusCode: 200,
+    };
+  } catch {
+    return { data: { message: "Invalid user id" }, statusCode: 400 };
+  }
+};
 
 
 // Soft delete user
@@ -158,11 +222,3 @@ export const restoreUser = async (userId: string) => {
   }
 };
 
-const generateJWT = (data: { id: string; email: string; role: string }) => {
-  const expiresIn = (env.JWT_EXPIRES_IN || "7d") as NonNullable<
-    SignOptions["expiresIn"]
-  >;
-  return jwt.sign(data, env.JWT_SECRET, {
-    expiresIn,
-  });
-};

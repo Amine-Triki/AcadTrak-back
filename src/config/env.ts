@@ -7,6 +7,7 @@ const envSchema = z.object({
   MONGO_URI:               z.string().min(1, "MONGO_URI is required"),
   JWT_SECRET:              z.string().min(10, "JWT_SECRET too short"),
   JWT_EXPIRES_IN:          z.string().default("7d"),
+  AUTH_COOKIE_NAME:        z.string().default("acadtrak_access_token"),
   CORS_ORIGIN:             z.string().default("http://localhost:5173"),
   CLOUDINARY_CLOUD_NAME:   z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
   CLOUDINARY_API_KEY:      z.string().min(1, "CLOUDINARY_API_KEY is required"),
