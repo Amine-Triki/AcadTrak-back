@@ -1,14 +1,12 @@
 import app from "./app.js";
 import mongoose from "mongoose";
 import { connectDB } from "./config/db.js";
-import dotenv from "dotenv";
-dotenv.config();
-/* import { env } from "./config/env.js";
- */
+import { env } from "./config/env.js";
+
 // تخزين مرجع للسيرفر لإغلاقه لاحقاً
-const server = app.listen(process.env.port, async () => {
+const server = app.listen(env.PORT, async () => {
   await connectDB();
-  console.log(`🚀 AcadTrak is running on port ${process.env.port}`);
+  console.log(`🚀 AcadTrak is running on port ${env.PORT}`);
 });
 
 // دالة الإغلاق النظيف

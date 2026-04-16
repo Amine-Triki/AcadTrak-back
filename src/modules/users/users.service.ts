@@ -1,15 +1,16 @@
 import userModel from "./user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 import { registerSchema, loginSchema } from "./user-validation.js";
 import { ZodError } from "zod";
+import { env } from "../../config/env.js";
 
 interface RegisterParams {
   firstName: string;
   lastName: string;
   userName: string;
   country: string;
-  role: 'student' | 'teacher' | 'admin';
   email: string;
   password: string;
 }
@@ -19,7 +20,6 @@ export const register = async ({
   lastName,
   userName,
   country,
-  role,
   email,
   password,
 }: RegisterParams) => {
@@ -30,7 +30,6 @@ export const register = async ({
       lastName,
       userName,
       country,
-      role,
       email,
       password,
     });
@@ -48,12 +47,19 @@ export const register = async ({
       lastName: validatedData.lastName,
       userName: validatedData.userName,
       country: validatedData.country,
-      role: validatedData.role,
+      role: "student",
       password: hashedPassword,
     });
     await newUser.save();
 
-    return { data: generateJWT({ firstName, lastName, email }), statusCode: 200 };
+    return {
+      data: generateJWT({
+        id: String(newUser._id),
+        email: newUser.email,
+        role: newUser.role,
+      }),
+      statusCode: 200,
+    };
   } catch (error) {
     if (error instanceof ZodError) {
       return {
@@ -90,8 +96,9 @@ export const login = async ({ email, password }: LoginParams) => {
     if (passwordMatch) {
       return {
         data: generateJWT({
-          email,
-          userName: findUser.userName,
+          id: String(findUser._id),
+          email: findUser.email,
+          role: findUser.role,
         }),
         statusCode: 200,
       };
@@ -151,6 +158,11 @@ export const restoreUser = async (userId: string) => {
   }
 };
 
-const generateJWT = (data: any) => {
-  return jwt.sign(data, process.env.JWT_SECRET || "");
+const generateJWT = (data: { id: string; email: string; role: string }) => {
+  const expiresIn = (env.JWT_EXPIRES_IN || "7d") as NonNullable<
+    SignOptions["expiresIn"]
+  >;
+  return jwt.sign(data, env.JWT_SECRET, {
+    expiresIn,
+  });
 };

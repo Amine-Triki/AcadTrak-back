@@ -1,7 +1,6 @@
 import express, {type Application } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-dotenv.config();
+import { env } from "./config/env.js";
 
 /* import { env } from "./config/env.js";
 import { router } from "./modules/index.routes.js"; // تجمع كل المسارات هنا */
@@ -12,7 +11,7 @@ const app: Application = express();
 // 1. Middlewares
 app.use(express.json());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,
+  origin: env.CORS_ORIGIN,
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 

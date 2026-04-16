@@ -21,7 +21,6 @@ export const registerSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   userName: z.string().min(3, "Username must be at least 3 characters"),
   country: z.string().min(2, "Country must be at least 2 characters"),
-  role: z.enum(['student', 'teacher', 'admin']).default('student'),
   email: z.email("Invalid email address"),
   password: passwordSchema,
 });
