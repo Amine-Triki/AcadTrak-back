@@ -1,7 +1,7 @@
 import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 import slugify from 'slugify';
 
-interface ICourseCoupon {
+export interface ICourseCoupon {
   code: string;
   discountType: 'percentage' | 'fixed';
   amount: number;
@@ -10,7 +10,7 @@ interface ICourseCoupon {
   isActive: boolean;
 }
 
-interface ICourse {
+export interface ICourse {
   title: string;
   slug: string;
   description: string;
@@ -24,10 +24,12 @@ interface ICourse {
   averageRating: number;
   totalRatingsCount: number;
   ratingsSum: number;
+  isHidden: boolean;
+  hiddenAt?: Date | null;
   coupon?: ICourseCoupon;
 }
 
-type CourseDocument = HydratedDocument<ICourse>;
+export type CourseDocument = HydratedDocument<ICourse>;
 
 export const getCoursePriceWithCoupon = (
   course: Pick<ICourse, 'type' | 'price' | 'coupon'>,
@@ -85,6 +87,8 @@ const courseSchema = new Schema<ICourse>({
   averageRating: { type: Number, default: 0, min: 0, max: 5 },
   totalRatingsCount: { type: Number, default: 0 },
   ratingsSum: { type: Number, default: 0 },
+  isHidden: { type: Boolean, default: false },
+  hiddenAt: { type: Date, default: null },
   coupon: {
     code: { type: String, trim: true, uppercase: true },
     discountType: { type: String, enum: ['percentage', 'fixed'] },

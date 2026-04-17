@@ -194,12 +194,12 @@ export const softDeleteUser = async (userId: string) => {
     );
 
     if (!user) {
-      return { data: "User not found", statusCode: 404 };
+      return { data: { message: "User not found" }, statusCode: 404 };
     }
 
-    return { data: "User deleted successfully", statusCode: 200 };
+    return { data: { message: "User deleted successfully" }, statusCode: 200 };
   } catch (error: any) {
-    return { data: error.message, statusCode: 500 };
+    return { data: { message: error.message }, statusCode: 500 };
   }
 };
 
@@ -213,12 +213,12 @@ export const restoreUser = async (userId: string) => {
     );
 
     if (!user) {
-      return { data: "User not found", statusCode: 404 };
+      return { data: { message: "User not found" }, statusCode: 404 };
     }
 
-    return { data: "User restored successfully", statusCode: 200 };
+    return { data: { message: "User restored successfully" }, statusCode: 200 };
   }catch (error: any) {
-    return { data: error.message, statusCode: 500 };
+    return { data: { message: error.message }, statusCode: 500 };
   }
 };
 
