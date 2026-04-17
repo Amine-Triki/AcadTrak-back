@@ -2,18 +2,7 @@ import { Types } from 'mongoose';
 import { Course, getCoursePriceWithCoupon } from '../courses/course.model.js';
 import { Enrollment } from './enrollment.model.js';
 import { isValidObjectId } from '../../utils/mongo.js';
-
-type UserRole = 'student' | 'teacher' | 'admin';
-
-interface ServiceResult {
-  statusCode: number;
-  data: unknown;
-}
-
-interface ViewerContext {
-  userId: string;
-  role: UserRole;
-}
+import type { ServiceResult, ViewerContext } from '../../types/index.js';
 
 export const isUserEnrolledInCourse = async (userId: string, courseId: string) => {
   if (!isValidObjectId(userId) || !isValidObjectId(courseId)) {
@@ -103,6 +92,46 @@ export const getMyEnrollments = async (viewer: ViewerContext): Promise<ServiceRe
   return {
     statusCode: 200,
     data: {
+      enrollments,
+      total: enrollments.length,
+    },
+  };
+};
+
+export const getCourseEnrollments = async (
+  courseId: string,
+  viewer: ViewerContext,
+): Promise<ServiceResult> => {
+  if (!isValidObjectId(courseId)) {
+    return { statusCode: 400, data: { message: 'Invalid course id' } };
+  }
+
+  const course = await Course.findById(courseId).select('_id title instructor');
+  if (!course) {
+    return { statusCode: 404, data: { message: 'Course not found' } };
+  }
+
+  const isOwner = String(course.instructor) === viewer.userId;
+  if (viewer.role !== 'admin' && !(viewer.role === 'teacher' && isOwner)) {
+    return { statusCode: 403, data: { message: 'You are not allowed to view this course enrollments' } };
+  }
+
+  const enrollments = await Enrollment.find({
+    course: new Types.ObjectId(courseId),
+  })
+    .populate({
+      path: 'student',
+      select: '_id firstName lastName userName email country role deletedAt',
+    })
+    .sort({ createdAt: -1 });
+
+  return {
+    statusCode: 200,
+    data: {
+      course: {
+        id: String(course._id),
+        title: course.title,
+      },
       enrollments,
       total: enrollments.length,
     },

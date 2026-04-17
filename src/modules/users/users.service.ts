@@ -183,6 +183,33 @@ export const getCurrentUser = async (userId: string) => {
   }
 };
 
+export const listUsers = async (includeDeleted = false) => {
+  try {
+    const users = await userModel
+      .find(includeDeleted ? {} : { deletedAt: null })
+      .select("_id firstName lastName userName country email role deletedAt")
+      .sort({ createdAt: -1 });
+
+    const mapped = users.map((user) => ({
+      ...toUserResponse(user),
+      deletedAt: user.deletedAt ? user.deletedAt.toISOString() : null,
+    }));
+
+    return {
+      statusCode: 200,
+      data: {
+        users: mapped,
+        total: mapped.length,
+      },
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      data: { message: (error as Error).message || "Failed to fetch users" },
+    };
+  }
+};
+
 
 // Soft delete user
 export const softDeleteUser = async (userId: string) => {

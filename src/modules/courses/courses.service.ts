@@ -3,18 +3,7 @@ import { Course, getCoursePriceWithCoupon, type CourseDocument, type ICourseCoup
 import { courseSchema, updateCourseSchema, type CreateCourseInput, type UpdateCourseInput } from './course-validation.js';
 import { Enrollment } from '../enrollments/enrollment.model.js';
 import { isValidObjectId } from '../../utils/mongo.js';
-
-type UserRole = 'student' | 'teacher' | 'admin';
-
-interface ServiceResult {
-	statusCode: number;
-	data: unknown;
-}
-
-interface ViewerContext {
-	userId: string;
-	role: UserRole;
-}
+import type { ServiceResult, ViewerContext } from '../../types/index.js';
 
 const toCourseResponse = async (
 	course: CourseDocument,

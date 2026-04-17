@@ -42,7 +42,26 @@ export const courseSchema = z.object({
 	path: ['price'],
 });
 
-export const updateCourseSchema = courseSchema.partial();
+const updateCourseBaseSchema = z.object({
+	title: z.string().trim().min(3, 'Title must be at least 3 characters').optional(),
+	description: z.string().trim().min(10, 'Description must be at least 10 characters').optional(),
+	category: objectIdSchema.optional(),
+	status: z.enum(['draft', 'published']).optional(),
+	type: z.enum(['free', 'paid']).optional(),
+	price: z.number().min(0, 'Price cannot be negative').optional(),
+	thumbnail: z.string().trim().url('Thumbnail must be a valid URL').optional(),
+	coupon: couponSchema.optional(),
+});
+
+export const updateCourseSchema = updateCourseBaseSchema.superRefine((course, ctx) => {
+	if (course.type === 'paid' && typeof course.price === 'number' && course.price <= 0) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'Paid course must have a price greater than 0',
+			path: ['price'],
+		});
+	}
+});
 
 export type CreateCourseInput = z.infer<typeof courseSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;

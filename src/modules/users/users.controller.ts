@@ -53,6 +53,12 @@ export const meController = async (req: AuthenticatedRequest, res: Response) => 
   return res.status(statusCode).json(data);
 };
 
+export const listUsersController = async (req: Request, res: Response) => {
+  const includeDeleted = String(req.query.includeDeleted || "false") === "true";
+  const { statusCode, data } = await usersService.listUsers(includeDeleted);
+  return res.status(statusCode).json(data);
+};
+
 export const logoutController = (_req: Request, res: Response) => {
   res.clearCookie(env.AUTH_COOKIE_NAME, {
     httpOnly: true,
