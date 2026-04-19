@@ -18,9 +18,9 @@ router.get("/health", healthController);
 
 router.post("/", requireAuth, authorize("teacher", "admin"), validate(courseSchema), courseController);
 
-router.get("/", requireAuth, getAllController);
+router.get("/", getAllController);
 
-router.get("/:id", requireAuth, getOneController);
+router.get("/:id", getOneController);
 
 router.patch("/:id", requireAuth, authorize("teacher", "admin"), validate(updateCourseSchema), updateCourseController);
 

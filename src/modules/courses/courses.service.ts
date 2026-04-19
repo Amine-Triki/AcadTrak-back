@@ -5,18 +5,91 @@ import { Enrollment } from '../enrollments/enrollment.model.js';
 import { isValidObjectId } from '../../utils/mongo.js';
 import type { ServiceResult, ViewerContext } from '../../types/index.js';
 
+const getRefId = (value: unknown) => {
+	if (value instanceof Types.ObjectId) {
+		return String(value);
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (value && typeof value === 'object' && '_id' in value) {
+		const idValue = (value as { _id?: unknown })._id;
+		if (idValue instanceof Types.ObjectId) {
+			return String(idValue);
+		}
+
+		if (typeof idValue === 'string') {
+			return idValue;
+		}
+	}
+
+	return '';
+};
+
+const getCategoryDetails = (value: unknown) => {
+	if (value && typeof value === 'object' && 'name' in value) {
+		const obj = value as { _id?: unknown; name?: unknown; slug?: unknown };
+		const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+		const slug = typeof obj.slug === 'string' ? obj.slug.trim() : '';
+
+		if (name) {
+			return {
+				id: getRefId(value),
+				name,
+				...(slug ? { slug } : {}),
+			};
+		}
+	}
+
+	return undefined;
+};
+
+const getInstructorDetails = (value: unknown) => {
+	if (value && typeof value === 'object') {
+		const obj = value as {
+			firstName?: unknown;
+			lastName?: unknown;
+			userName?: unknown;
+		};
+
+		const firstName = typeof obj.firstName === 'string' ? obj.firstName.trim() : '';
+		const lastName = typeof obj.lastName === 'string' ? obj.lastName.trim() : '';
+		const userName = typeof obj.userName === 'string' ? obj.userName.trim() : '';
+		const name = `${firstName} ${lastName}`.trim() || userName;
+
+		if (name) {
+			return {
+				id: getRefId(value),
+				name,
+				...(userName ? { userName } : {}),
+			};
+		}
+	}
+
+	return undefined;
+};
+
 const toCourseResponse = async (
 	course: CourseDocument,
 	canSeeHidden: boolean,
 	couponCode?: string,
 ) => {
+	const categoryId = getRefId(course.category);
+	const instructorId = getRefId(course.instructor);
+	const categoryDetails = getCategoryDetails(course.category);
+	const instructorDetails = getInstructorDetails(course.instructor);
+
 	return {
 		id: String(course._id),
 		title: course.title,
 		slug: course.slug,
 		description: course.description,
-		instructor: course.instructor,
-		category: course.category,
+		instructor: instructorId,
+		category: categoryId,
+		...(categoryDetails ? { categoryDetails } : {}),
+		...(instructorDetails ? { instructorDetails } : {}),
 		status: course.status,
 		type: course.type,
 		price: course.price,
@@ -92,6 +165,11 @@ export const createCourse = async (
 			return { statusCode: 500, data: { message: 'Failed to create course' } };
 		}
 
+		await saved.populate([
+			{ path: 'category', select: 'name slug' },
+			{ path: 'instructor', select: 'firstName lastName userName' },
+		]);
+
 		return {
 			statusCode: 201,
 			data: {
@@ -121,23 +199,35 @@ export const getAllCourses = async (viewer?: ViewerContext): Promise<ServiceResu
 		);
 	}
 
-	const mapped = await Promise.all(
-		courses.map(async (course) => {
-			const canSeeHidden =
-				!course.isHidden ||
-				Boolean(
-					viewer && (
-						String(course.instructor) === viewer.userId ||
-						viewer.role === 'admin' ||
-						enrolledCourseIds.has(String(course._id))
-					),
-				);
+	const visibleDocs = courses.filter((course) => {
+		const instructorId = getRefId(course.instructor);
+		const canSeeHidden =
+			!course.isHidden ||
+			Boolean(
+				viewer && (
+					instructorId === viewer.userId ||
+					viewer.role === 'admin' ||
+					enrolledCourseIds.has(String(course._id))
+				),
+			);
 
-			return toCourseResponse(course, canSeeHidden);
-		}),
-	);
+		if (!canSeeHidden) {
+			return false;
+		}
 
-	const visible = mapped.filter((course) => course.canSeeHidden);
+		if (!viewer) {
+			return course.status === 'published';
+		}
+
+		return true;
+	});
+
+	await Course.populate(visibleDocs, [
+		{ path: 'category', select: 'name slug' },
+		{ path: 'instructor', select: 'firstName lastName userName' },
+	]);
+
+	const visible = await Promise.all(visibleDocs.map((course) => toCourseResponse(course, true)));
 
 	return {
 		statusCode: 200,
@@ -162,16 +252,25 @@ export const getCourseById = async (
 		return { statusCode: 404, data: { message: 'Course not found' } };
 	}
 
+	if (!viewer && course.status !== 'published') {
+		return { statusCode: 404, data: { message: 'Course not found' } };
+	}
+
 	let canSeeHidden = !course.isHidden;
 	if (!canSeeHidden && viewer) {
 		canSeeHidden =
-			String(course.instructor) === viewer.userId ||
+			getRefId(course.instructor) === viewer.userId ||
 			viewer.role === 'admin' ||
 			Boolean(await Enrollment.findOne({
 				student: new Types.ObjectId(viewer.userId),
 				course: course._id,
 			}).select('_id'));
 	}
+
+	await course.populate([
+		{ path: 'category', select: 'name slug' },
+		{ path: 'instructor', select: 'firstName lastName userName' },
+	]);
 
 	const mapped = await toCourseResponse(course, canSeeHidden, couponCode);
 
@@ -210,6 +309,10 @@ export const updateCourse = async (
 		}
 
 		await course.save();
+		await course.populate([
+			{ path: 'category', select: 'name slug' },
+			{ path: 'instructor', select: 'firstName lastName userName' },
+		]);
 
 		return {
 			statusCode: 200,
@@ -255,6 +358,10 @@ export const deleteOrHideCourse = async (
 	course.isHidden = true;
 	course.hiddenAt = new Date();
 	await course.save();
+	await course.populate([
+		{ path: 'category', select: 'name slug' },
+		{ path: 'instructor', select: 'firstName lastName userName' },
+	]);
 
 	return {
 		statusCode: 200,

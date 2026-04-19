@@ -6,7 +6,7 @@ import { env } from "./config/env.js";
 // تخزين مرجع للسيرفر لإغلاقه لاحقاً
 const server = app.listen(env.PORT, async () => {
   await connectDB();
-  console.log(`🚀 AcadTrak is running on port ${env.PORT}`);
+  console.log(` AcadTrak is running on port ${env.PORT}`);
 });
 
 // دالة الإغلاق النظيف

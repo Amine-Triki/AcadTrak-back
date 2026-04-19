@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { z } from "zod";
 
-// ✅ تعريف كل المتغيرات المطلوبة وأنواعها
+//✅ Definition of all required variables and their types
 const envSchema = z.object({
   PORT:                    z.string().default("5000"),
   MONGO_URI:               z.string().min(1, "MONGO_URI is required"),
@@ -15,7 +15,7 @@ const envSchema = z.object({
   NODE_ENV:                z.enum(["development", "production", "test"]).default("development"),
 });
 
-// التحقق عند تشغيل السيرفر
+// Validation when starting the server
 const result = envSchema.safeParse(process.env);
 
 if (!result.success) {
@@ -24,7 +24,7 @@ if (!result.success) {
     const path = issue.path.length ? issue.path.join(".") : "env";
     console.error(`   ${path}: ${issue.message}`);
   });
-  process.exit(1); // يوقف السيرفر فوراً
+  process.exit(1);   // The server stops immediately
 }
 
 export const env = result.data;

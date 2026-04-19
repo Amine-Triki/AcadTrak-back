@@ -6,6 +6,7 @@ import usersRouter from "./modules/users/users.routes.js";
 import coursesRouter from "./modules/courses/courses.routes.js";
 import enrollmentsRouter from "./modules/enrollments/enrollments.routes.js";
 import lessonsRouter from "./modules/lessons/lessons.routes.js";
+import quizRouter from "./modules/quiz/quiz.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app: Application = express();
@@ -23,6 +24,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/courses", coursesRouter);
 app.use("/api/enrollments", enrollmentsRouter);
 app.use("/api/lessons", lessonsRouter);
+app.use("/api/quiz", quizRouter);
 
 
 app.use(errorHandler);

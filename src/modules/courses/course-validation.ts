@@ -11,15 +11,22 @@ const couponSchema = z.object({
 	startsAt: z.coerce.date().optional(),
 	expiresAt: z.coerce.date(),
 	isActive: z.boolean().optional().default(true),
-}).refine((coupon) => {
-	if (!coupon.startsAt) {
-		return true;
+}).superRefine((coupon, ctx) => {
+	if (coupon.startsAt && coupon.startsAt >= coupon.expiresAt) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Coupon startsAt must be before expiresAt',
+			path: ['startsAt'],
+		});
 	}
 
-	return coupon.startsAt < coupon.expiresAt;
-}, {
-	message: 'Coupon startsAt must be before expiresAt',
-	path: ['startsAt'],
+	if (coupon.discountType === 'percentage' && coupon.amount > 100) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Percentage discount cannot exceed 100%',
+			path: ['amount'],
+		});
+	}
 });
 
 export const courseSchema = z.object({
@@ -56,7 +63,7 @@ const updateCourseBaseSchema = z.object({
 export const updateCourseSchema = updateCourseBaseSchema.superRefine((course, ctx) => {
 	if (course.type === 'paid' && typeof course.price === 'number' && course.price <= 0) {
 		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
+			code: 'custom',
 			message: 'Paid course must have a price greater than 0',
 			path: ['price'],
 		});
