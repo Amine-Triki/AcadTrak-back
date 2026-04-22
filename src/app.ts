@@ -9,6 +9,7 @@ import lessonsRouter from "./modules/lessons/lessons.routes.js";
 import quizRouter from "./modules/quiz/quiz.routes.js";
 import discussionsRouter from "./modules/discussions/discussions.routes.js";
 import contactRouter from "./modules/contact/contact.routes.js";
+import paymentRouter from "./modules/payments/payments.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app: Application = express();
@@ -22,14 +23,14 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 }));
 
-app.use("/api/users", usersRouter);
-app.use("/api/courses", coursesRouter);
+app.use("/api/users",       usersRouter);
+app.use("/api/courses",     coursesRouter);
 app.use("/api/enrollments", enrollmentsRouter);
-app.use("/api/lessons", lessonsRouter);
-app.use("/api/quiz", quizRouter);
+app.use("/api/lessons",     lessonsRouter);
+app.use("/api/quiz",        quizRouter);
 app.use("/api/discussions", discussionsRouter);
-app.use("/api/contact", contactRouter);
-
+app.use("/api/contact",     contactRouter);
+app.use("/api/payments",    paymentRouter);
 
 app.use(errorHandler);
 
