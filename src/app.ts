@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env.js";
 import usersRouter from "./modules/users/users.routes.js";
+import categoriesRouter from "./modules/categories/categories.routes.js";
 import coursesRouter from "./modules/courses/courses.routes.js";
 import enrollmentsRouter from "./modules/enrollments/enrollments.routes.js";
 import lessonsRouter from "./modules/lessons/lessons.routes.js";
@@ -24,6 +25,7 @@ app.use(cors({
 }));
 
 app.use("/api/users",       usersRouter);
+app.use("/api/categories",  categoriesRouter);
 app.use("/api/courses",     coursesRouter);
 app.use("/api/enrollments", enrollmentsRouter);
 app.use("/api/lessons",     lessonsRouter);

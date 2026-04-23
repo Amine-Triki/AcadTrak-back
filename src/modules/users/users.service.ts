@@ -3,6 +3,13 @@ import bcrypt from "bcrypt";
 import { registerSchema, loginSchema } from "./user-validation.js";
 import { ZodError } from "zod";
 import { signAuthToken } from "../../utils/jwt.js";
+import { Types } from "mongoose";
+import { Course } from "../courses/course.model.js";
+import { Enrollment } from "../enrollments/enrollment.model.js";
+import { Quiz } from "../quiz/quiz.model.js";
+import { QuizAttempt } from "../quiz/quizAttempt.model.js";
+import { Certificate } from "../quiz/certificate.model.js";
+import { Payment } from "../payments/payment.model.js";
 
 type UserRole = "student" | "teacher" | "admin";
 
@@ -286,6 +293,91 @@ export const restoreUser = async (userId: string) => {
     return { data: { message: "User restored successfully" }, statusCode: 200 };
   }catch (error: any) {
     return { data: { message: error.message }, statusCode: 500 };
+  }
+};
+
+export const getDashboardStats = async (viewer: { userId: string; role: UserRole }) => {
+  try {
+    const viewerId = new Types.ObjectId(viewer.userId);
+
+    if (viewer.role === "admin") {
+      const [users, courses, payments] = await Promise.all([
+        userModel.countDocuments({ deletedAt: null }),
+        Course.countDocuments({}),
+        Payment.countDocuments({}),
+      ]);
+
+      return {
+        statusCode: 200,
+        data: {
+          role: "admin",
+          stats: {
+            users,
+            courses,
+            payments,
+          },
+        },
+      };
+    }
+
+    if (viewer.role === "teacher") {
+      const teacherCourses = await Course.find({ instructor: viewerId }).select("_id").lean();
+      const courseIds = teacherCourses.map((course) => course._id);
+
+      if (courseIds.length === 0) {
+        return {
+          statusCode: 200,
+          data: {
+            role: "teacher",
+            stats: {
+              myCourses: 0,
+              enrolledStudents: 0,
+              publishedQuizzes: 0,
+            },
+          },
+        };
+      }
+
+      const [enrolledStudents, publishedQuizzes] = await Promise.all([
+        Enrollment.countDocuments({ course: { $in: courseIds } }),
+        Quiz.countDocuments({ course: { $in: courseIds }, isPublished: true }),
+      ]);
+
+      return {
+        statusCode: 200,
+        data: {
+          role: "teacher",
+          stats: {
+            myCourses: courseIds.length,
+            enrolledStudents,
+            publishedQuizzes,
+          },
+        },
+      };
+    }
+
+    const [enrolledCourses, completedAssessments, certificates] = await Promise.all([
+      Enrollment.countDocuments({ student: viewerId }),
+      QuizAttempt.countDocuments({ student: viewerId }),
+      Certificate.countDocuments({ student: viewerId }),
+    ]);
+
+    return {
+      statusCode: 200,
+      data: {
+        role: "student",
+        stats: {
+          enrolledCourses,
+          completedAssessments,
+          certificates,
+        },
+      },
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      data: { message: (error as Error).message || "Failed to load dashboard stats" },
+    };
   }
 };
 

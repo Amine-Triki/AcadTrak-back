@@ -10,6 +10,7 @@ import {
 	meController,
 	logoutController,
 	listUsersController,
+	dashboardStatsController,
 	softDeleteController,
 	restoreController,
 } from "./users.controller.js";
@@ -23,6 +24,8 @@ router.post("/login", validate(loginSchema), loginController);
 router.post("/upgrade-to-teacher", requireAuth, upgradeToTeacherController);
 
 router.get("/me", requireAuth, meController);
+
+router.get("/dashboard-stats", requireAuth, dashboardStatsController);
 
 router.get("/", requireAuth, authorize("admin"), listUsersController);
 

@@ -80,6 +80,18 @@ export const listUsersController = async (req: Request, res: Response) => {
   return res.status(statusCode).json(data);
 };
 
+export const dashboardStatsController = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.authUser?.id;
+  const role = req.authUser?.role;
+
+  if (!userId || !role) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { statusCode, data } = await usersService.getDashboardStats({ userId, role });
+  return res.status(statusCode).json(data);
+};
+
 export const logoutController = (_req: Request, res: Response) => {
   res.clearCookie(env.AUTH_COOKIE_NAME, {
     httpOnly: true,

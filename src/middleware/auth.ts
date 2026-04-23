@@ -26,3 +26,22 @@ export const requireAuth = (
 	req.authUser = payload;
 	next();
 };
+
+export const optionalAuth = (
+	req: AuthenticatedRequest,
+	_res: Response,
+	next: NextFunction,
+) => {
+	const token = req.cookies?.[env.AUTH_COOKIE_NAME] as string | undefined;
+	if (!token) {
+		next();
+		return;
+	}
+
+	const payload = verifyAuthToken(token);
+	if (payload) {
+		req.authUser = payload;
+	}
+
+	next();
+};

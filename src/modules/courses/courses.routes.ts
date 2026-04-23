@@ -1,6 +1,6 @@
 import express from "express";
 import validate from "../../middleware/validate.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../../middleware/auth.js";
 import { authorize } from "../../middleware/authorize.js";
 import { courseSchema, updateCourseSchema } from "./course-validation.js";
 import {
@@ -18,9 +18,9 @@ router.get("/health", healthController);
 
 router.post("/", requireAuth, authorize("teacher", "admin"), validate(courseSchema), courseController);
 
-router.get("/", getAllController);
+router.get("/", optionalAuth, getAllController);
 
-router.get("/:id", getOneController);
+router.get("/:id", optionalAuth, getOneController);
 
 router.patch("/:id", requireAuth, authorize("teacher", "admin"), validate(updateCourseSchema), updateCourseController);
 

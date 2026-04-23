@@ -60,15 +60,27 @@ export const initKonnectPayment = async (
   }
 
   const effectivePriceUSD = getCoursePriceWithCoupon(course, couponCode);
+  const normalizedCouponCode = couponCode?.trim().toUpperCase();
 
   if (effectivePriceUSD === 0) {
-    const enrollment = await Enrollment.create({
+    const enrollmentPayload: {
+      student: Types.ObjectId;
+      course: Types.ObjectId;
+      paidPrice: number;
+      paymentProvider: 'coupon_100';
+      couponCode?: string;
+    } = {
       student:         new Types.ObjectId(viewer.userId),
       course:          course._id,
       paidPrice:       0,
-      couponCode:      couponCode?.trim().toUpperCase(),
       paymentProvider: 'coupon_100',
-    });
+    };
+
+    if (normalizedCouponCode) {
+      enrollmentPayload.couponCode = normalizedCouponCode;
+    }
+
+    const enrollment = await Enrollment.create(enrollmentPayload);
     return {
       statusCode: 201,
       data: { message: 'Enrolled for free with 100% coupon', enrollmentId: String(enrollment._id) },
@@ -78,15 +90,28 @@ export const initKonnectPayment = async (
   const amountMillimes = toMillimes(effectivePriceUSD);
   const trackingId     = randomUUID();
 
-  const payment = await Payment.create({
+  const paymentPayload: {
+    student: Types.ObjectId;
+    course: Types.ObjectId;
+    provider: 'konnect';
+    status: 'pending';
+    amountTND: number;
+    trackingId: string;
+    couponCode?: string;
+  } = {
     student:   new Types.ObjectId(viewer.userId),
     course:    course._id,
     provider:  'konnect',
     status:    'pending',
     amountTND: amountMillimes,
-    couponCode: couponCode?.trim().toUpperCase(),
     trackingId,
-  });
+  };
+
+  if (normalizedCouponCode) {
+    paymentPayload.couponCode = normalizedCouponCode;
+  }
+
+  const payment = await Payment.create(paymentPayload);
 
   const body = {
     receiverWalletId:         env.KONNECT_WALLET_ID,
@@ -116,7 +141,9 @@ export const initKonnectPayment = async (
       return { statusCode: 400, data: { message: data.message || 'Konnect payment initialization failed' } };
     }
 
-    payment.konnectPaymentRef = data.paymentRef;
+    if (data.paymentRef) {
+      payment.konnectPaymentRef = data.paymentRef;
+    }
     payment.konnectPayUrl     = data.payUrl;
     await payment.save();
 
@@ -162,14 +189,26 @@ export const handleKonnectWebhook = async (
     }).select('_id');
 
     if (!exists) {
-      await Enrollment.create({
+      const enrollmentPayload: {
+        student: Types.ObjectId;
+        course: Types.ObjectId;
+        paidPrice: number;
+        paymentProvider: 'konnect';
+        konnectPaymentRef: string;
+        couponCode?: string;
+      } = {
         student:           payment.student,
         course:            payment.course,
         paidPrice:         payment.amountTND / 1000,
-        couponCode:        payment.couponCode,
         paymentProvider:   'konnect',
         konnectPaymentRef: paymentRef,
-      });
+      };
+
+      if (payment.couponCode) {
+        enrollmentPayload.couponCode = payment.couponCode;
+      }
+
+      await Enrollment.create(enrollmentPayload);
     }
     return { statusCode: 200, data: { enrolled: true } };
   }
