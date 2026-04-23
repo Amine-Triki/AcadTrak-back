@@ -13,6 +13,10 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY:      z.string().min(1, "CLOUDINARY_API_KEY is required"),
   CLOUDINARY_API_SECRET:   z.string().min(1, "CLOUDINARY_API_SECRET is required"),
   NODE_ENV:                z.enum(["development", "production", "test"]).default("development"),
+  KONNECT_API_KEY:         z.string().min(1, "KONNECT_API_KEY is required"),
+  KONNECT_WALLET_ID:       z.string().min(1, "KONNECT_WALLET_ID is required"),
+  FRONTEND_URL:            z.url("FRONTEND_URL must be a valid URL").default("http://localhost:5173"),
+  BACKEND_URL:             z.url("BACKEND_URL must be a valid URL").default("http://localhost:5000"),
 });
 
 // Validation when starting the server
