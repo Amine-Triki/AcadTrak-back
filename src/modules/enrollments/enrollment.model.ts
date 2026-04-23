@@ -7,8 +7,7 @@ export interface IEnrollment {
   couponCode?: string;
   enrolledAt: Date;
   // مزود الدفع
-  paymentProvider?: 'flouci' | 'konnect' | 'coupon_100' | 'free';
-  flouciPaymentId?: string;
+  paymentProvider?: 'konnect' | 'coupon_100' | 'free';
   konnectPaymentRef?: string;
 }
 
@@ -22,9 +21,8 @@ const enrollmentSchema = new Schema<IEnrollment>({
   enrolledAt: { type: Date, default: Date.now },
   paymentProvider: {
     type: String,
-    enum: ['flouci', 'konnect', 'coupon_100', 'free'],
+    enum: ['konnect', 'coupon_100', 'free'],
   },
-  flouciPaymentId:   { type: String, sparse: true },
   konnectPaymentRef: { type: String, sparse: true },
 }, { timestamps: true });
 

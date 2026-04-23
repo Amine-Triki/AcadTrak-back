@@ -1,6 +1,6 @@
 import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 
-export type PaymentProvider = 'flouci' | 'konnect';
+export type PaymentProvider =  'konnect';
 export type PaymentStatus   = 'pending' | 'success' | 'failed' | 'expired';
 
 export interface IPayment {
@@ -10,9 +10,7 @@ export interface IPayment {
   status:     PaymentStatus;
   amountTND:  number;          // بالـ Millimes دائماً
   couponCode?: string;
-  // Flouci
-  flouciPaymentId?: string;
-  flouciLink?:      string;
+
   // Konnect
   konnectPaymentRef?: string;
   konnectPayUrl?:     string;
@@ -28,12 +26,10 @@ const paymentSchema = new Schema<IPayment>(
   {
     student:  { type: Schema.Types.ObjectId, ref: 'User',   required: true, index: true },
     course:   { type: Schema.Types.ObjectId, ref: 'Course', required: true, index: true },
-    provider: { type: String, enum: ['flouci', 'konnect'], required: true },
+    provider: { type: String, enum: ['konnect'], required: true },
     status:   { type: String, enum: ['pending', 'success', 'failed', 'expired'], default: 'pending' },
     amountTND: { type: Number, required: true },
     couponCode: { type: String, uppercase: true, trim: true },
-    flouciPaymentId: { type: String, index: true, sparse: true },
-    flouciLink:      { type: String },
     konnectPaymentRef: { type: String, index: true, sparse: true },
     konnectPayUrl:     { type: String },
     trackingId: { type: String, required: true, unique: true },
