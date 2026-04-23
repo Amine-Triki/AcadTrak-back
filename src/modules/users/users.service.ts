@@ -114,16 +114,20 @@ export const register = async ({
 };
 
 interface LoginParams {
-  email: string;
+  identifier: string;
   password: string;
 }
-export const login = async ({ email, password }: LoginParams) => {
+export const login = async ({ identifier, password }: LoginParams) => {
   try {
     // Validate input with Zod
-    const validatedData = loginSchema.parse({ email, password });
+    const validatedData = loginSchema.parse({ identifier, password });
+    const normalizedIdentifier = validatedData.identifier.trim();
 
     const findUser = await userModel.findOne({
-      email: validatedData.email,
+      $or: [
+        { email: normalizedIdentifier },
+        { userName: normalizedIdentifier },
+      ],
       deletedAt: null
     });
 
@@ -163,6 +167,42 @@ export const login = async ({ email, password }: LoginParams) => {
     };
   }
 }   
+
+export const upgradeToTeacher = async (userId: string) => {
+  try {
+    const user = await userModel.findOne({ _id: userId, deletedAt: null });
+
+    if (!user) {
+      return { data: { message: "User not found" }, statusCode: 404 };
+    }
+
+    if (user.role === "admin") {
+      return { data: { message: "Admin account cannot be upgraded" }, statusCode: 400 };
+    }
+
+    if (user.role === "student") {
+      user.role = "teacher";
+      await user.save();
+    }
+
+    const mappedUser = toUserResponse(user);
+    const token = signAuthToken({
+      id: mappedUser.id,
+      email: mappedUser.email,
+      role: mappedUser.role,
+    });
+
+    return {
+      data: {
+        token,
+        user: mappedUser,
+      } satisfies AuthSuccessData,
+      statusCode: 200,
+    };
+  } catch {
+    return { data: { message: "Invalid user id" }, statusCode: 400 };
+  }
+};
 
 export const getCurrentUser = async (userId: string) => {
   try {

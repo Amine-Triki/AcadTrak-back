@@ -2,7 +2,7 @@ import { Schema, model, Document } from 'mongoose';
 
 interface ICategory extends Document {
   name: string;
-  slug: string; // حتى الفئة لها رابط خاص مثل /category/programming
+  slug: string;// Even the category has a special link like /category/programming
 }
 
 const categorySchema = new Schema<ICategory>({

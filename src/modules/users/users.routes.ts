@@ -6,6 +6,7 @@ import { registerSchema, loginSchema } from "./user-validation.js";
 import {
 	registerController,
 	loginController,
+	upgradeToTeacherController,
 	meController,
 	logoutController,
 	listUsersController,
@@ -18,6 +19,8 @@ const router = express.Router();
 router.post("/register", validate(registerSchema), registerController);
 
 router.post("/login", validate(loginSchema), loginController);
+
+router.post("/upgrade-to-teacher", requireAuth, upgradeToTeacherController);
 
 router.get("/me", requireAuth, meController);
 

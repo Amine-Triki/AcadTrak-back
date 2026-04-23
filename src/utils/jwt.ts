@@ -11,7 +11,7 @@ export interface AuthTokenPayload {
 }
 
 export const signAuthToken = (payload: AuthTokenPayload) => {
-	const expiresIn = (env.JWT_EXPIRES_IN || "7d") as NonNullable<
+	const expiresIn = (env.JWT_EXPIRES_IN ) as NonNullable<
 		SignOptions["expiresIn"]
 	>;
 

@@ -43,6 +43,27 @@ export const loginController = async (req: Request, res: Response) => {
   });
 };
 
+export const upgradeToTeacherController = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.authUser?.id;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { statusCode, data } = await usersService.upgradeToTeacher(userId);
+  if (statusCode >= 400 || !data || typeof data !== "object" || !("token" in data)) {
+    return res.status(statusCode).json(data);
+  }
+
+  const token = data.token as string;
+  const user = data.user;
+
+  res.cookie(env.AUTH_COOKIE_NAME, token, AUTH_COOKIE_OPTIONS);
+  return res.status(statusCode).json({
+    message: "Account upgraded to teacher successfully",
+    user,
+  });
+};
+
 export const meController = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.authUser?.id;
   if (!userId) {
