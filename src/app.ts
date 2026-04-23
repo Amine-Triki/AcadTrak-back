@@ -14,12 +14,26 @@ import paymentRouter from "./modules/payments/payments.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app: Application = express();
+const allowedOrigins = Array.from(
+  new Set(
+    [env.FRONTEND_URL, ...env.CORS_ORIGIN.split(",")]
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
+);
 
 // 1. Middlewares
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 }));

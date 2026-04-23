@@ -112,15 +112,17 @@ courseSchema.pre('validate', function(this: CourseDocument) {
     this.invalidate('price', 'Paid courses must have a price greater than 0.');
   }
 
-  if (!this.coupon) {
+  // Only validate coupon if it explicitly exists and has at least one field set
+  if (!this.coupon || Object.keys(this.coupon).length === 0) {
     return;
   }
 
-  this.coupon.code = this.coupon.code?.trim().toUpperCase();
-
+  // Only validate coupon fields if code is provided (indicates coupon was intentionally set)
   if (!this.coupon.code) {
-    this.invalidate('coupon.code', 'Coupon code is required when coupon is provided.');
+    return;
   }
+
+  this.coupon.code = this.coupon.code.trim().toUpperCase();
 
   if (!this.coupon.discountType) {
     this.invalidate('coupon.discountType', 'Coupon discountType is required.');

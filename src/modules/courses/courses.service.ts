@@ -124,7 +124,6 @@ export const createCourse = async (
 			instructor: Types.ObjectId;
 			status?: 'draft' | 'published';
 			thumbnail?: string;
-			coupon?: ICourseCoupon;
 		} = {
 			title: validated.title,
 			description: validated.description,
@@ -140,22 +139,6 @@ export const createCourse = async (
 
 		if (validated.thumbnail) {
 			createPayload.thumbnail = validated.thumbnail;
-		}
-
-		if (validated.coupon) {
-			const coupon: ICourseCoupon = {
-				code: validated.coupon.code,
-				discountType: validated.coupon.discountType,
-				amount: validated.coupon.amount,
-				expiresAt: validated.coupon.expiresAt,
-				isActive: validated.coupon.isActive,
-			};
-
-			if (validated.coupon.startsAt) {
-				coupon.startsAt = validated.coupon.startsAt;
-			}
-
-			createPayload.coupon = coupon;
 		}
 
 		const created = await Course.create(createPayload);

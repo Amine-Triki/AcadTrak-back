@@ -1,9 +1,23 @@
 import { z } from 'zod';
 
+const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
+
+const extractYouTubeId = (value: string) => {
+  const trimmed = value.trim();
+
+  if (YOUTUBE_ID_REGEX.test(trimmed)) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  return match?.[1] || trimmed;
+};
+
 const youtubeIdSchema = z
   .string()
   .trim()
-  .regex(/^[a-zA-Z0-9_-]{11}$/, 'Invalid YouTube video ID');
+  .transform(extractYouTubeId)
+  .refine((value) => YOUTUBE_ID_REGEX.test(value), 'Invalid YouTube video ID');
 
 const cloudinaryAssetSchema = z.object({
   url:      z.string().url(),

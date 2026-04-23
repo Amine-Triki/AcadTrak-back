@@ -37,7 +37,7 @@ export const courseSchema = z.object({
 	type: z.enum(['free', 'paid']),
 	price: z.number().min(0, 'Price cannot be negative').optional(),
 	thumbnail: z.string().trim().url('Thumbnail must be a valid URL').optional(),
-	coupon: couponSchema.optional(),
+	coupon: z.never().optional(),
 }).refine((course) => {
 	if (course.type === 'free') {
 		return true;
@@ -57,7 +57,7 @@ const updateCourseBaseSchema = z.object({
 	type: z.enum(['free', 'paid']).optional(),
 	price: z.number().min(0, 'Price cannot be negative').optional(),
 	thumbnail: z.string().trim().url('Thumbnail must be a valid URL').optional(),
-	coupon: couponSchema.optional(),
+	coupon: z.unknown().optional(),
 });
 
 export const updateCourseSchema = updateCourseBaseSchema.superRefine((course, ctx) => {
@@ -67,6 +67,24 @@ export const updateCourseSchema = updateCourseBaseSchema.superRefine((course, ct
 			message: 'Paid course must have a price greater than 0',
 			path: ['price'],
 		});
+	}
+
+	// If coupon is provided as an update, validate it separately
+	if (course.coupon && typeof course.coupon === 'object') {
+		const couponData = course.coupon as Record<string, unknown>;
+		
+		// Only validate if it looks like a complete coupon object
+		if (couponData.code || couponData.discountType || couponData.expiresAt) {
+			try {
+				couponSchema.parse(couponData);
+			} catch (err) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Invalid coupon data',
+					path: ['coupon'],
+				});
+			}
+		}
 	}
 });
 
