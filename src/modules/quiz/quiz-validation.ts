@@ -6,9 +6,48 @@ const objectIdSchema = z
 
 const questionSchema = z.object({
 	text: z.string().trim().min(5, 'Question text must be at least 5 characters'),
-	options: z.array(z.string().trim().min(1, 'Option cannot be empty')).length(4, 'Each question must have exactly 4 options'),
-	correctIndex: z.number().int().min(0, 'correctIndex must be between 0 and 3').max(3, 'correctIndex must be between 0 and 3'),
+	options: z.array(z.string().trim().min(1, 'Option cannot be empty')).min(2, 'Each question must have at least 2 options'),
+	correctIndex: z.number().int().min(0).optional(),
+	correctIndices: z.array(z.number().int().min(0)).min(1).optional(),
 	explanation: z.string().trim().min(1, 'Explanation cannot be empty').optional(),
+}).superRefine((question, ctx) => {
+	if (!question.correctIndices && question.correctIndex === undefined) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Each question must have at least one correct answer',
+			path: ['correctIndices'],
+		});
+	}
+
+	if (question.correctIndices && question.correctIndices.length === 0) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'Each question must have at least one correct answer',
+			path: ['correctIndices'],
+		});
+	}
+
+	if (question.correctIndex !== undefined && question.correctIndex < 0) {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'correctIndex must be greater than or equal to 0',
+			path: ['correctIndex'],
+		});
+	}
+
+	const maxIndex = question.options.length - 1;
+	const correctIndices = question.correctIndices ?? (question.correctIndex !== undefined ? [question.correctIndex] : []);
+
+	for (const correctIndex of correctIndices) {
+		if (correctIndex > maxIndex) {
+			ctx.addIssue({
+				code: 'custom',
+				message: `Correct answer index must be between 0 and ${maxIndex}`,
+				path: ['correctIndices'],
+			});
+			break;
+		}
+	}
 });
 
 const quizWriteSchema = z.object({

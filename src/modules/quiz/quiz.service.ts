@@ -12,7 +12,8 @@ import type { CreateQuizInput, UpdateQuizInput } from './quiz-validation.js';
 type QuizQuestionPayload = {
   text: string;
   options: string[];
-  correctIndex: number;
+  correctIndex?: number;
+  correctIndices?: number[];
   explanation?: string | undefined;
 };
 
@@ -25,10 +26,17 @@ const canManageCourse = (courseInstructorId: string, viewer: ViewerContext) => {
 };
 
 const normalizeQuestion = (question: QuizQuestionPayload): IQuestion => {
+  const correctIndices = Array.isArray(question.correctIndices)
+    ? question.correctIndices.filter((value) => Number.isInteger(value)).map((value) => Number(value))
+    : typeof question.correctIndex === 'number'
+      ? [question.correctIndex]
+      : [];
+
   const normalized: IQuestion = {
     text: question.text.trim(),
     options: question.options.map((option) => option.trim()),
-    correctIndex: question.correctIndex,
+    correctIndices,
+    ...(typeof question.correctIndex === 'number' ? { correctIndex: question.correctIndex } : {}),
   };
 
   if (typeof question.explanation === 'string' && question.explanation.trim()) {
@@ -49,7 +57,8 @@ const toQuizResponse = (quiz: QuizDocument, includeAnswerKey: boolean) => ({
   questions: quiz.questions.map((question) => ({
     text: question.text,
     options: question.options,
-    ...(includeAnswerKey ? { correctIndex: question.correctIndex } : {}),
+    ...(includeAnswerKey ? { correctIndices: question.correctIndices, correctIndex: question.correctIndex ?? question.correctIndices?.[0] } : {}),
+    ...(includeAnswerKey ? { allowMultipleAnswers: (question.correctIndices?.length || 0) > 1 } : { allowMultipleAnswers: (question.correctIndices?.length || 0) > 1 }),
     ...(includeAnswerKey && question.explanation ? { explanation: question.explanation } : {}),
   })),
 });
@@ -276,7 +285,7 @@ export const deleteQuiz = async (
 
 export const submitQuizAttempt = async (
   quizId: string,
-  studentAnswers: number[],    // [0, 2, 1, 3, ...] — index الإجابة لكل سؤال
+  studentAnswers: Array<number | number[]>,
   viewer: ViewerContext,
 ) : Promise<ServiceResult> => {
   if (!isValidObjectId(quizId)) {
@@ -316,14 +325,27 @@ export const submitQuizAttempt = async (
   // حساب النتيجة
   const answers = quiz.questions.map((q, i) => {
     const rawAnswer = studentAnswers[i];
-    const chosenIndex = typeof rawAnswer === 'number' && Number.isInteger(rawAnswer)
-      ? rawAnswer
-      : -1;
+    const normalizedSelected = Array.isArray(rawAnswer)
+      ? rawAnswer.filter((value) => Number.isInteger(value)).map((value) => Number(value))
+      : typeof rawAnswer === 'number' && Number.isInteger(rawAnswer)
+        ? [rawAnswer]
+        : [];
+
+    const correctIndices = Array.isArray(q.correctIndices) && q.correctIndices.length > 0
+      ? q.correctIndices
+      : typeof q.correctIndex === 'number'
+        ? [q.correctIndex]
+        : [];
+
+    const selectedSorted = [...new Set(normalizedSelected)].sort((a, b) => a - b);
+    const correctSorted = [...new Set(correctIndices)].sort((a, b) => a - b);
+    const isCorrect = selectedSorted.length === correctSorted.length
+      && selectedSorted.every((value, index) => value === correctSorted[index]);
 
     return {
       questionIndex: i,
-      chosenIndex,
-      isCorrect: chosenIndex === q.correctIndex,
+      chosenIndices: selectedSorted,
+      isCorrect,
     };
   });
 
@@ -366,7 +388,7 @@ export const submitQuizAttempt = async (
       // إظهار الإجابات الصحيحة فقط بعد الانتهاء
       results: answers.map((a, i) => ({
         ...a,
-        correctIndex: quiz.questions[i]?.correctIndex,
+        correctIndices: quiz.questions[i]?.correctIndices ?? (typeof quiz.questions[i]?.correctIndex === 'number' ? [quiz.questions[i]!.correctIndex!] : []),
         explanation:  quiz.questions[i]?.explanation,
       })),
       ...(passed && quiz.type === 'final_exam' && {

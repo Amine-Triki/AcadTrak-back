@@ -3,8 +3,9 @@ import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 // ── سؤال واحد ──────────────────────────────────
 export interface IQuestion {
   text:          string;
-  options:       string[];     // 4 خيارات
-  correctIndex:  number;       // رقم الخيار الصحيح (0-3)
+  options:       string[];
+  correctIndices: number[];
+  correctIndex?: number;       // legacy single-answer support
   explanation?:  string;       // شرح الإجابة الصحيحة
 }
 
@@ -27,9 +28,12 @@ const questionSchema = new Schema<IQuestion>(
   {
     text:         { type: String, required: true },
     options:      { type: [String], required: true,
-                    validate: [(v: string[]) => v.length === 4,
-                               'Must have exactly 4 options'] },
-    correctIndex: { type: Number, required: true, min: 0, max: 3 },
+                    validate: [(v: string[]) => v.length >= 2,
+                               'Must have at least 2 options'] },
+    correctIndices: { type: [Number], required: true,
+                      validate: [(v: number[]) => v.length >= 1,
+                                 'Must have at least 1 correct answer'] },
+    correctIndex: { type: Number, min: 0 },
     explanation:  { type: String },
   },
   { _id: false },

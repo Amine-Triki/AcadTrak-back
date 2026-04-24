@@ -2,7 +2,7 @@ import { Schema, model, Types, type HydratedDocument } from 'mongoose';
 
 interface IAnswerRecord {
   questionIndex:  number;
-  chosenIndex:    number;
+  chosenIndices:  number[];
   isCorrect:      boolean;
 }
 
@@ -25,7 +25,7 @@ const quizAttemptSchema = new Schema<IQuizAttempt>(
     course:  { type: Schema.Types.ObjectId, ref: 'Course', required: true },
     answers: [{
       questionIndex: { type: Number, required: true },
-      chosenIndex:   { type: Number, required: true },
+      chosenIndices: { type: [Number], required: true },
       isCorrect:     { type: Boolean, required: true },
       _id: false,
     }],

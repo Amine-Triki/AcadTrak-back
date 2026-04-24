@@ -32,11 +32,14 @@ export const submitQuizAttemptController = async (req: AuthenticatedRequest, res
   }
 
   const rawAnswers = req.body?.answers;
-  if (!Array.isArray(rawAnswers) || !rawAnswers.every((value) => Number.isInteger(value))) {
-    return res.status(400).json({ message: 'answers must be an array of integers' });
+  const isValidAnswer = (value: unknown) =>
+    Number.isInteger(value) || (Array.isArray(value) && value.every((item) => Number.isInteger(item)));
+
+  if (!Array.isArray(rawAnswers) || !rawAnswers.every(isValidAnswer)) {
+    return res.status(400).json({ message: 'answers must be an array of integers or integer arrays' });
   }
 
-  const { statusCode, data } = await submitQuizAttempt(quizId, rawAnswers as number[], viewer);
+  const { statusCode, data } = await submitQuizAttempt(quizId, rawAnswers as Array<number | number[]>, viewer);
   return res.status(statusCode).json(data);
 };
 
