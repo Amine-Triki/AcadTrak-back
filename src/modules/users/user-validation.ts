@@ -30,5 +30,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters").optional(),
+  lastName: z.string().min(2, "Last name must be at least 2 characters").optional(),
+  userName: z.string().min(3, "Username must be at least 3 characters").optional(),
+  country: z.string().min(2, "Country must be at least 2 characters").optional(),
+  bio: z.string().max(1000, "Bio is too long").optional(),
+  avatar: z.url("Avatar must be a valid URL").optional(),
+}).refine((payload) => Object.keys(payload).length > 0, {
+  message: "At least one field is required",
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

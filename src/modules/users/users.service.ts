@@ -1,6 +1,6 @@
 import userModel from "./user.model.js";
 import bcrypt from "bcrypt";
-import { registerSchema, loginSchema } from "./user-validation.js";
+import { registerSchema, loginSchema, updateProfileSchema } from "./user-validation.js";
 import { ZodError } from "zod";
 import { signAuthToken } from "../../utils/jwt.js";
 import { Types } from "mongoose";
@@ -21,6 +21,8 @@ interface UserResponse {
   country: string;
   email: string;
   role: UserRole;
+  bio?: string;
+  avatar?: string;
 }
 
 interface AuthSuccessData {
@@ -36,6 +38,8 @@ const toUserResponse = (user: {
   country: string;
   email: string;
   role: UserRole;
+  bio?: string;
+  avatar?: string;
 }): UserResponse => ({
   id: String(user._id),
   firstName: user.firstName,
@@ -44,6 +48,8 @@ const toUserResponse = (user: {
   country: user.country,
   email: user.email,
   role: user.role,
+  ...(typeof user.bio === "string" ? { bio: user.bio } : {}),
+  ...(typeof user.avatar === "string" ? { avatar: user.avatar } : {}),
 });
 
 interface RegisterParams {
@@ -215,7 +221,7 @@ export const getCurrentUser = async (userId: string) => {
   try {
     const user = await userModel
       .findOne({ _id: userId, deletedAt: null })
-      .select("_id firstName lastName userName country email role");
+      .select("_id firstName lastName userName country email role bio avatar");
 
     if (!user) {
       return { data: { message: "User not found" }, statusCode: 404 };
@@ -227,6 +233,87 @@ export const getCurrentUser = async (userId: string) => {
     };
   } catch {
     return { data: { message: "Invalid user id" }, statusCode: 400 };
+  }
+};
+
+export const getPublicTeacherProfile = async (userId: string) => {
+  try {
+    const user = await userModel
+      .findOne({ _id: userId, deletedAt: null })
+      .select("_id firstName lastName userName country role bio avatar createdAt");
+
+    if (!user) {
+      return { data: { message: "User not found" }, statusCode: 404 };
+    }
+
+    if (user.role !== "teacher" && user.role !== "admin") {
+      return { data: { message: "This user is not an instructor" }, statusCode: 400 };
+    }
+
+    return {
+      statusCode: 200,
+      data: {
+        user: {
+          id: String(user._id),
+          firstName: user.firstName,
+          lastName: user.lastName,
+          userName: user.userName,
+          country: user.country,
+          role: user.role,
+          bio: user.bio,
+          avatar: user.avatar,
+          createdAt: user.createdAt,
+        },
+      },
+    };
+  } catch {
+    return { data: { message: "Invalid user id" }, statusCode: 400 };
+  }
+};
+
+export const updateMyProfile = async (userId: string, payload: unknown) => {
+  try {
+    const validated = updateProfileSchema.parse(payload);
+
+    const existingUser = await userModel.findOne({ _id: userId, deletedAt: null });
+    if (!existingUser) {
+      return { data: { message: "User not found" }, statusCode: 404 };
+    }
+
+    if (validated.userName && validated.userName !== existingUser.userName) {
+      const duplicate = await userModel.findOne({
+        userName: validated.userName,
+        deletedAt: null,
+        _id: { $ne: existingUser._id },
+      }).select("_id");
+
+      if (duplicate) {
+        return { data: { message: "Username already exists" }, statusCode: 400 };
+      }
+    }
+
+    Object.assign(existingUser, validated);
+    await existingUser.save();
+
+    return {
+      statusCode: 200,
+      data: {
+        message: "Profile updated successfully",
+        user: toUserResponse(existingUser),
+      },
+    };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return {
+        data: { message: error.issues[0]?.message || "Validation error" },
+        statusCode: 400,
+      };
+    }
+
+    return {
+      statusCode: 500,
+      data: { message: (error as Error).message || "Failed to update profile" },
+    };
   }
 };
 

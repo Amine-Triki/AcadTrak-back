@@ -26,8 +26,9 @@ export const enrollInCourse = async (
     return { statusCode: 400, data: { message: 'Invalid course id' } };
   }
 
-  if (viewer.role !== 'student' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only students can enroll in courses' } };
+  // Fix #1: Allow students, teachers AND admins to enroll in courses
+  if (!['student', 'teacher', 'admin'].includes(viewer.role)) {
+    return { statusCode: 403, data: { message: 'Only students, teachers, and admins can enroll in courses' } };
   }
 
   const course = await Course.findById(courseId);
@@ -51,6 +52,7 @@ export const enrollInCourse = async (
     course: Types.ObjectId;
     paidPrice: number;
     couponCode?: string;
+    paymentProvider?: 'konnect' | 'coupon_100' | 'free';
   } = {
     student: new Types.ObjectId(viewer.userId),
     course: course._id as Types.ObjectId,
@@ -59,6 +61,14 @@ export const enrollInCourse = async (
 
   if (couponCode?.trim()) {
     payload.couponCode = couponCode.trim().toUpperCase();
+  }
+
+  // Fix #5: Set paymentProvider for free or coupon enrollment
+  if (course.type === 'free') {
+    payload.paymentProvider = 'free';
+  } else if (paidPrice === 0 && couponCode?.trim()) {
+    // 100% discount coupon
+    payload.paymentProvider = 'coupon_100';
   }
 
   const enrollment = await Enrollment.create(payload);
@@ -134,6 +144,82 @@ export const getCourseEnrollments = async (
       },
       enrollments,
       total: enrollments.length,
+    },
+  };
+};
+
+export const getTeacherStudents = async (viewer: ViewerContext): Promise<ServiceResult> => {
+  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
+    return { statusCode: 403, data: { message: 'Only teachers or admins can view this data' } };
+  }
+
+  const courseQuery = viewer.role === 'admin'
+    ? {}
+    : { instructor: new Types.ObjectId(viewer.userId) };
+
+  const courses = await Course.find(courseQuery).select('_id title').lean();
+  const courseMap = new Map(courses.map((course) => [String(course._id), course.title]));
+  const courseIds = Array.from(courseMap.keys()).map((id) => new Types.ObjectId(id));
+
+  if (courseIds.length === 0) {
+    return {
+      statusCode: 200,
+      data: {
+        students: [],
+        total: 0,
+      },
+    };
+  }
+
+  const enrollments = await Enrollment.find({
+    course: { $in: courseIds },
+  })
+    .populate({
+      path: 'student',
+      select: '_id firstName lastName userName email country role',
+    })
+    .select('student course paidPrice couponCode enrolledAt')
+    .sort({ enrolledAt: -1 })
+    .lean();
+
+  const students = enrollments
+    .map((enrollment) => {
+      const student = enrollment.student as {
+        _id?: unknown;
+        firstName?: string;
+        lastName?: string;
+        userName?: string;
+        email?: string;
+        country?: string;
+        role?: string;
+      } | null;
+
+      if (!student || !student._id) {
+        return null;
+      }
+
+      return {
+        id: String(student._id),
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        userName: student.userName || '',
+        email: student.email || '',
+        country: student.country || '',
+        role: student.role || 'student',
+        courseId: String(enrollment.course),
+        courseTitle: courseMap.get(String(enrollment.course)) || 'Course',
+        paidPrice: enrollment.paidPrice,
+        couponCode: enrollment.couponCode,
+        enrolledAt: enrollment.enrolledAt,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    statusCode: 200,
+    data: {
+      students,
+      total: students.length,
     },
   };
 };

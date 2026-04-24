@@ -74,6 +74,26 @@ export const meController = async (req: AuthenticatedRequest, res: Response) => 
   return res.status(statusCode).json(data);
 };
 
+export const publicProfileController = async (req: Request, res: Response) => {
+  const userId = req.params.id;
+  if (!userId || typeof userId !== "string") {
+    return res.status(400).json({ message: "User id is required" });
+  }
+
+  const { statusCode, data } = await usersService.getPublicTeacherProfile(userId);
+  return res.status(statusCode).json(data);
+};
+
+export const updateMyProfileController = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.authUser?.id;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { statusCode, data } = await usersService.updateMyProfile(userId, req.body);
+  return res.status(statusCode).json(data);
+};
+
 export const listUsersController = async (req: Request, res: Response) => {
   const includeDeleted = String(req.query.includeDeleted || "false") === "true";
   const { statusCode, data } = await usersService.listUsers(includeDeleted);

@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
-import { enrollInCourse, getCourseEnrollments, getMyEnrollments } from './enrollments.service.js';
+import { enrollInCourse, getCourseEnrollments, getMyEnrollments, getTeacherStudents } from './enrollments.service.js';
 
 const getViewerFromRequest = (req: AuthenticatedRequest) => {
   const authUser = req.authUser;
@@ -52,5 +52,15 @@ export const courseEnrollmentsController = async (req: AuthenticatedRequest, res
   }
 
   const { statusCode, data } = await getCourseEnrollments(courseId, viewer);
+  return res.status(statusCode).json(data);
+};
+
+export const teacherStudentsController = async (req: AuthenticatedRequest, res: Response) => {
+  const viewer = getViewerFromRequest(req);
+  if (!viewer) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const { statusCode, data } = await getTeacherStudents(viewer);
   return res.status(statusCode).json(data);
 };

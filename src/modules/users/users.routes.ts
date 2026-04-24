@@ -8,6 +8,8 @@ import {
 	loginController,
 	upgradeToTeacherController,
 	meController,
+	publicProfileController,
+	updateMyProfileController,
 	logoutController,
 	listUsersController,
 	dashboardStatsController,
@@ -24,6 +26,8 @@ router.post("/login", validate(loginSchema), loginController);
 router.post("/upgrade-to-teacher", requireAuth, upgradeToTeacherController);
 
 router.get("/me", requireAuth, meController);
+router.patch("/me/profile", requireAuth, updateMyProfileController);
+router.get("/public/:id", publicProfileController);
 
 router.get("/dashboard-stats", requireAuth, dashboardStatsController);
 

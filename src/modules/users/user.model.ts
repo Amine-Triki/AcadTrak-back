@@ -6,6 +6,8 @@ firstName: string;
 lastName: string;
   userName:string;
   country:string;
+  bio?: string;
+  avatar?: string;
   role: 'student' | 'teacher' | 'admin';
 email: string;
 password: string;
@@ -17,6 +19,8 @@ const userSchema = new Schema<IUser>({
     lastName: { type: String, required: true },
     userName: { type: String, required: true , unique:true},
     country: { type: String, required: true },
+    bio: { type: String, default: "" },
+    avatar: { type: String, default: "" },
     role: { type: String, enum: ['student', 'teacher', 'admin'], default: 'student' },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true , minlength:8 },
