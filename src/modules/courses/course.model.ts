@@ -55,7 +55,8 @@ export const getCoursePriceWithCoupon = (
     return course.price;
   }
 
-  if (now > coupon.expiresAt) {
+  // ✅ Bug 4 Fix: إذا expiresAt غير موجود أو null → الكوبون لا ينتهي
+  if (coupon.expiresAt && now > coupon.expiresAt) {
     return course.price;
   }
 

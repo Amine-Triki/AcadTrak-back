@@ -99,7 +99,19 @@ const toCourseResponse = async (
 		totalRatingsCount: course.totalRatingsCount,
 		isHidden: course.isHidden,
 		hiddenAt: course.hiddenAt,
-		coupon: course.coupon as ICourseCoupon | undefined,
+		// ✅ الأستاذ صاحب الدورة يرى كود الكوبون الكامل — الآخرون يرون معلومات مجردة فقط
+		...(canSeeHidden && course.coupon
+			? { coupon: course.coupon as ICourseCoupon }
+			: course.coupon
+			? {
+					couponInfo: {
+						hasActiveCoupon: course.coupon.isActive === true,
+						discountType: course.coupon.discountType,
+						amount: course.coupon.amount,
+						expiresAt: course.coupon.expiresAt,
+					},
+			  }
+			: {}),
 		canSeeHidden,
 	};
 };
@@ -125,6 +137,7 @@ export const createCourse = async (
 			instructor: Types.ObjectId;
 			status?: 'draft' | 'published';
 			thumbnail?: string;
+			coupon?: ICourseCoupon;
 		} = {
 			title: validated.title,
 			description: validated.description,
@@ -140,6 +153,11 @@ export const createCourse = async (
 
 		if (validated.thumbnail) {
 			createPayload.thumbnail = validated.thumbnail;
+		}
+
+		// ✅ Bug 2 Fix: حفظ الكوبون عند الإنشاء إذا كانت الدورة مدفوعة
+		if (validated.type === 'paid' && validated.coupon) {
+			createPayload.coupon = validated.coupon as ICourseCoupon;
 		}
 
 		const created = await Course.create(createPayload);
@@ -257,6 +275,14 @@ export const getCourseById = async (
 	]);
 
 	const mapped = await toCourseResponse(course, canSeeHidden, couponCode);
+
+	// ✅ Bug 3 Fix: إذا أرسل المستخدم كوبون ولم يتغير السعر → الكوبون غير صالح
+	if (couponCode && mapped.effectivePrice === mapped.price && course.type === 'paid') {
+		return {
+			statusCode: 400,
+			data: { message: 'كوبون غير صالح أو منتهي الصلاحية' },
+		};
+	}
 
 	if (!mapped.canSeeHidden) {
 		return { statusCode: 404, data: { message: 'Course not found' } };

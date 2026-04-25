@@ -37,7 +37,8 @@ export const courseSchema = z.object({
 	type: z.enum(['free', 'paid']),
 	price: z.number().min(0, 'Price cannot be negative').optional(),
 	thumbnail: z.string().trim().url('Thumbnail must be a valid URL').optional(),
-	coupon: z.never().optional(),
+	// ✅ Bug 2 Fix: السماح بالكوبون عند الإنشاء
+	coupon: couponSchema.optional(),
 }).refine((course) => {
 	if (course.type === 'free') {
 		return true;

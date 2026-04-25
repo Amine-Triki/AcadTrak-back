@@ -315,11 +315,25 @@ export const getLessonsByCourse = async (
 
 	const lessons = await Lesson.find(filter).sort({ order: 1, createdAt: 1 });
 
+	// ✅ للمستخدم غير المسجل: أخفِ URLs المحتوى من الدروس العادية (غير المعاينة)
+	// الـ filter يُرجع فقط preview للزائر، لكن كتابة هذا صريحاً أفضل للأمان
+	const safeLessons = canManage
+		? lessons
+		: lessons.map((lesson) => {
+				if (lesson.isPreview) return lesson;
+				// حذف URLs المحتوى الحساسة من قائمة الدروس إن وُجدت
+				const obj = lesson.toObject();
+				delete obj.video;
+				delete obj.pdf;
+				delete obj.thumbnail;
+				return obj;
+		  });
+
 	return {
 		statusCode: 200,
 		data: {
-			lessons,
-			total: lessons.length,
+			lessons: safeLessons,
+			total: safeLessons.length,
 		},
 	};
 };
