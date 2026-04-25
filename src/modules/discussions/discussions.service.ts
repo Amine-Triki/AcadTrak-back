@@ -116,10 +116,7 @@ const toDiscussionResponse = (discussion: DiscussionDocument) => {
 };
 
 const canManageCourse = (courseInstructorId: string, viewer: ViewerContext) => {
-  if (viewer.role === 'admin') {
-    return true;
-  }
-
+  // ✅ فقط الأستاذ صاحب الدورة يستطيع الإدارة — Admin لا يملك هذا
   return viewer.role === 'teacher' && courseInstructorId === viewer.userId;
 };
 
@@ -205,13 +202,15 @@ export const createDiscussion = async (
   payload: CreateDiscussionInput,
   viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-  if (viewer.role !== 'student') {
-    return { statusCode: 403, data: { message: 'Only students can create questions' } };
-  }
-
   const permission = await canAccessCourseDiscussions(payload.course, viewer);
   if (permission.error) {
     return permission.error;
+  }
+
+  // ✅ صاحب الدورة (الأستاذ) لا يسأل في دورته هو — فقط المسجلون يسألون
+  // الأستاذ المسجل في دورة أستاذ آخر → canManage=false → مسموح له بالسؤال
+  if (permission.canManage) {
+    return { statusCode: 403, data: { message: 'Course instructors cannot post questions in their own course' } };
   }
 
   if (payload.lesson) {
@@ -266,8 +265,9 @@ export const updateDiscussionQuestion = async (
     return { statusCode: 400, data: { message: 'Deleted questions cannot be edited' } };
   }
 
-  const isOwnerStudent = viewer.role === 'student' && String(discussion.student) === viewer.userId;
-  if (!isOwnerStudent) {
+  // ✅ صاحب السؤال فقط يعدله — بصرف النظر عن الـ role (student أو teacher مسجل)
+  const isOwner = String(discussion.student) === viewer.userId;
+  if (!isOwner) {
     return { statusCode: 403, data: { message: 'You are not allowed to edit this question' } };
   }
 
@@ -321,10 +321,10 @@ export const softDeleteDiscussion = async (
     return permission.error;
   }
 
-  const isOwnerStudent = viewer.role === 'student' && String(discussion.student) === viewer.userId;
-  const isAdmin = viewer.role === 'admin';
+  // ✅ صاحب السؤال يمكنه حذفه — بصرف النظر عن الـ role (student أو teacher مسجل)
+  const isOwner = String(discussion.student) === viewer.userId;
 
-  if (!isOwnerStudent && !isAdmin) {
+  if (!isOwner) {
     return { statusCode: 403, data: { message: 'You are not allowed to delete this question' } };
   }
 
@@ -349,8 +349,9 @@ export const answerDiscussion = async (
   payload: AnswerDiscussionInput,
   viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only teachers or admins can answer questions' } };
+  // ✅ فقط الأستاذ صاحب الدورة يجيب — Admin لا يمكنه الإجابة
+  if (viewer.role !== 'teacher') {
+    return { statusCode: 403, data: { message: 'Only teachers can answer questions' } };
   }
 
   if (!isValidObjectId(discussionId)) {

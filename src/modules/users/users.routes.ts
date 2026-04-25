@@ -23,7 +23,8 @@ router.post("/register", validate(registerSchema), registerController);
 
 router.post("/login", validate(loginSchema), loginController);
 
-router.post("/upgrade-to-teacher", requireAuth, upgradeToTeacherController);
+// ✅ فقط الطالب يمكنه الترقية — الأستاذ والـ Admin لا يحتاجان ذلك
+router.post("/upgrade-to-teacher", requireAuth, authorize("student"), upgradeToTeacherController);
 
 router.get("/me", requireAuth, meController);
 router.patch("/me/profile", requireAuth, updateMyProfileController);

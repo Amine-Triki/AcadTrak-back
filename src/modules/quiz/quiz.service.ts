@@ -18,10 +18,7 @@ type QuizQuestionPayload = {
 };
 
 const canManageCourse = (courseInstructorId: string, viewer: ViewerContext) => {
-  if (viewer.role === 'admin') {
-    return true;
-  }
-
+  // ✅ فقط الأستاذ صاحب الدورة — Admin لا يُدير الاختبارات
   return viewer.role === 'teacher' && courseInstructorId === viewer.userId;
 };
 
@@ -89,8 +86,9 @@ export const createQuiz = async (
   payload: CreateQuizInput,
   viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only teachers or admins can create quizzes' } };
+  // ✅ فقط الأستاذ صاحب الدورة
+  if (viewer.role !== 'teacher') {
+    return { statusCode: 403, data: { message: 'Only teachers can create quizzes' } };
   }
 
   const permission = await getCourseForManagement(payload.course, viewer);
@@ -179,8 +177,9 @@ export const updateQuiz = async (
   payload: UpdateQuizInput,
   viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only teachers or admins can update quizzes' } };
+  // ✅ فقط الأستاذ صاحب الدورة
+  if (viewer.role !== 'teacher') {
+    return { statusCode: 403, data: { message: 'Only teachers can update quizzes' } };
   }
 
   if (!isValidObjectId(quizId)) {
@@ -257,8 +256,9 @@ export const deleteQuiz = async (
   quizId: string,
   viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only teachers or admins can delete quizzes' } };
+  // ✅ فقط الأستاذ صاحب الدورة
+  if (viewer.role !== 'teacher') {
+    return { statusCode: 403, data: { message: 'Only teachers can delete quizzes' } };
   }
 
   if (!isValidObjectId(quizId)) {

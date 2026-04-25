@@ -43,10 +43,7 @@ const extractYouTubeId = (value: string) => {
 };
 
 const canManageCourse = (courseInstructorId: string, viewer: ViewerContext) => {
-	if (viewer.role === 'admin') {
-		return true;
-	}
-
+	// ✅ فقط الأستاذ صاحب الدورة — Admin لا يُدير الدروس
 	return viewer.role === 'teacher' && courseInstructorId === viewer.userId;
 };
 
@@ -147,8 +144,9 @@ export const createLesson = async (
 	files: LessonMediaFiles,
 	viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-	if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-		return { statusCode: 403, data: { message: 'Only teachers or admins can create lessons' } };
+	// ✅ فقط الأستاذ ينشئ الدروس
+	if (viewer.role !== 'teacher') {
+		return { statusCode: 403, data: { message: 'Only teachers can create lessons' } };
 	}
 
 	if (!payload.course) {
@@ -374,8 +372,9 @@ export const updateLesson = async (
 	files: LessonMediaFiles,
 	viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-	if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-		return { statusCode: 403, data: { message: 'Only teachers or admins can update lessons' } };
+	// ✅ فقط الأستاذ يعدّل الدروس
+	if (viewer.role !== 'teacher') {
+		return { statusCode: 403, data: { message: 'Only teachers can update lessons' } };
 	}
 
 	if (!isValidObjectId(lessonId)) {
@@ -543,8 +542,9 @@ export const deleteLesson = async (
 	lessonId: string,
 	viewer: ViewerContext,
 ): Promise<ServiceResult> => {
-	if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-		return { statusCode: 403, data: { message: 'Only teachers or admins can delete lessons' } };
+	// ✅ فقط الأستاذ يحذف الدروس
+	if (viewer.role !== 'teacher') {
+		return { statusCode: 403, data: { message: 'Only teachers can delete lessons' } };
 	}
 
 	if (!isValidObjectId(lessonId)) {

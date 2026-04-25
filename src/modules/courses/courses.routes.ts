@@ -16,14 +16,17 @@ const router = express.Router();
 
 router.get("/health", healthController);
 
-router.post("/", requireAuth, authorize("teacher", "admin"), validate(courseSchema), courseController);
+// ✅ فقط الأستاذ يُنشئ ويُعدّل — Admin لا يملك هذه الصلاحية
+router.post("/", requireAuth, authorize("teacher"), validate(courseSchema), courseController);
 
 router.get("/", optionalAuth, getAllController);
 
 router.get("/:id", optionalAuth, getOneController);
 
-router.patch("/:id", requireAuth, authorize("teacher", "admin"), validate(updateCourseSchema), updateCourseController);
+// ✅ فقط الأستاذ يُعدّل دورته
+router.patch("/:id", requireAuth, authorize("teacher"), validate(updateCourseSchema), updateCourseController);
 
+// ✅ Admin يستطيع الحذف للإشراف — لكن الـ service تتحقق من الملكية للأستاذ
 router.delete("/:id", requireAuth, authorize("teacher", "admin"), deleteCourseController);
 
 

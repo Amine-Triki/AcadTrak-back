@@ -123,13 +123,19 @@ export const logoutController = (_req: Request, res: Response) => {
   return res.status(200).json({ message: "Logged out successfully" });
 };
 
-export const softDeleteController = async (req: Request, res: Response) => {
-  const userId = req.params.id;
-  if (!userId || typeof userId !== "string") {
-    return res.status(400).json({ data: "User id is required" });
+export const softDeleteController = async (req: AuthenticatedRequest, res: Response) => {
+  const targetUserId = req.params.id;
+  const actorUserId = req.authUser?.id;
+
+  if (!targetUserId || typeof targetUserId !== "string") {
+    return res.status(400).json({ message: "User id is required" });
   }
 
-  const { statusCode, data } = await usersService.softDeleteUser(userId);
+  if (!actorUserId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { statusCode, data } = await usersService.softDeleteUser(targetUserId, actorUserId);
   res.status(statusCode).json(data);
 };
 

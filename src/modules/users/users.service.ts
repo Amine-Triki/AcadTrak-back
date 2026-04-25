@@ -193,10 +193,14 @@ export const upgradeToTeacher = async (userId: string) => {
       return { data: { message: "Admin account cannot be upgraded" }, statusCode: 400 };
     }
 
-    if (user.role === "student") {
-      user.role = "teacher";
-      await user.save();
+    // ✅ إذا كان المستخدم أستاذاً بالفعل، نُخبره بوضوح
+    if (user.role === "teacher") {
+      return { data: { message: "You are already a teacher" }, statusCode: 400 };
     }
+
+    // student → teacher
+    user.role = "teacher";
+    await user.save();
 
     const mappedUser = toUserResponse(user);
     const token = signAuthToken({
@@ -246,8 +250,9 @@ export const getPublicTeacherProfile = async (userId: string) => {
       return { data: { message: "User not found" }, statusCode: 404 };
     }
 
-    if (user.role !== "teacher" && user.role !== "admin") {
-      return { data: { message: "This user is not an instructor" }, statusCode: 400 };
+    // ✅ فقط الأستاذ يمكن عرض ملفه كـ instructor — Admin ليس مدرساً
+    if (user.role !== 'teacher') {
+      return { data: { message: 'This user is not an instructor' }, statusCode: 400 };
     }
 
     return {
@@ -346,17 +351,25 @@ export const listUsers = async (includeDeleted = false) => {
 
 
 // Soft delete user
-export const softDeleteUser = async (userId: string) => {
+export const softDeleteUser = async (targetUserId: string, actorUserId: string) => {
   try {
-    const user = await userModel.findByIdAndUpdate(
-      userId,
-      { deletedAt: new Date() },
-      { new: true }
-    );
+    // ✅ منع حذف النفس
+    if (targetUserId === actorUserId) {
+      return { data: { message: "You cannot delete your own account" }, statusCode: 400 };
+    }
 
+    const user = await userModel.findById(targetUserId);
     if (!user) {
       return { data: { message: "User not found" }, statusCode: 404 };
     }
+
+    // ✅ منع حذف حسابات Admin الأخرى
+    if (user.role === "admin") {
+      return { data: { message: "Admin accounts cannot be deleted" }, statusCode: 400 };
+    }
+
+    user.deletedAt = new Date();
+    await user.save();
 
     return { data: { message: "User deleted successfully" }, statusCode: 200 };
   } catch (error: any) {

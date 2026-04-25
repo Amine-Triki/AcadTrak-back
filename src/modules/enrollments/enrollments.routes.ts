@@ -10,16 +10,16 @@ import {
 
 const router = express.Router();
 
-// Fix #6: Add explicit authorize middleware - students, teachers, and admins can enroll
-router.post('/course/:courseId/enroll', requireAuth, authorize('student', 'teacher', 'admin'), enrollInCourseController);
+// ✅ Student وTeacher فقط — Admin مراقب لا يسجل في دورات
+router.post('/course/:courseId/enroll', requireAuth, authorize('student', 'teacher'), enrollInCourseController);
 
-// Only teachers/admins can view course enrollments (ownership checked in service)
-router.get('/course/:courseId', requireAuth, authorize('teacher', 'admin'), courseEnrollmentsController);
+// ✅ فقط الأستاذ صاحب الدورة يرى enrollments (الـ service تتحقق من الملكية)
+router.get('/course/:courseId', requireAuth, authorize('teacher'), courseEnrollmentsController);
 
-// Any authenticated user can view their own enrollments
+// ✅ أي مستخدم مسجل يرى دوراته
 router.get('/my', requireAuth, myEnrollmentsController);
 
-// Only teachers/ can view their students
+// ✅ فقط الأستاذ يرى طلابه
 router.get('/teacher/students', requireAuth, authorize('teacher'), teacherStudentsController);
 
 export default router;

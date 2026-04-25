@@ -109,8 +109,9 @@ export const createCourse = async (
 	authUser: ViewerContext,
 ): Promise<ServiceResult> => {
 	try {
-		if (authUser.role !== 'teacher' && authUser.role !== 'admin') {
-			return { statusCode: 403, data: { message: 'Only teachers or admins can create courses' } };
+		// ✅ متطابق مع courses.routes.ts — فقط الأستاذ ينشئ الدورات
+		if (authUser.role !== 'teacher') {
+			return { statusCode: 403, data: { message: 'Only teachers can create courses' } };
 		}
 
 		const validated = courseSchema.parse(payload);
@@ -279,7 +280,8 @@ export const updateCourse = async (
 	}
 
 	const isOwner = String(course.instructor) === viewer.userId;
-	if (!isOwner && viewer.role !== 'admin') {
+	// ✅ فقط الأستاذ صاحب الدورة — متطابق مع courses.routes.ts
+	if (!isOwner) {
 		return { statusCode: 403, data: { message: 'You are not allowed to update this course' } };
 	}
 
@@ -326,6 +328,7 @@ export const deleteOrHideCourse = async (
 	}
 
 	const isOwner = String(course.instructor) === viewer.userId;
+	// ✅ Admin يستطيع الحذف للإشراف، والأستاذ يحذف دورته هو فقط
 	if (!isOwner && viewer.role !== 'admin') {
 		return { statusCode: 403, data: { message: 'You are not allowed to delete this course' } };
 	}

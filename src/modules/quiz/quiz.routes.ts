@@ -16,9 +16,11 @@ const router = express.Router();
 
 router.get('/health', healthController);
 router.get('/course/:courseId', requireAuth, getCourseQuizzesController);
-router.post('/', requireAuth, authorize('teacher', 'admin'), validate(createQuizSchema), createQuizController);
-router.patch('/:quizId', requireAuth, authorize('teacher', 'admin'), validate(updateQuizSchema), updateQuizController);
-router.delete('/:quizId', requireAuth, authorize('teacher', 'admin'), deleteQuizController);
+// ✅ فقط الأستاذ يُنشئ ويعدل ويحذف الاختبارات
+router.post('/', requireAuth, authorize('teacher'), validate(createQuizSchema), createQuizController);
+router.patch('/:quizId', requireAuth, authorize('teacher'), validate(updateQuizSchema), updateQuizController);
+router.delete('/:quizId', requireAuth, authorize('teacher'), deleteQuizController);
+// ✅ أي مستخدم مسجل دخوله يستطيع تقديم إجابة
 router.post('/:quizId/submit', requireAuth, submitQuizAttemptController);
 
 export default router;

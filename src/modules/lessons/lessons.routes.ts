@@ -17,14 +17,15 @@ const uploadLessonAssets = upload.fields([
 	{ name: 'thumbnail', maxCount: 1 },
 ]);
 
-router.post('/', requireAuth, authorize('teacher', 'admin'), uploadLessonAssets, createLessonController);
+// ✅ فقط الأستاذ (صاحب الدورة) ينشئ ويعدل ويحذف الدروس
+router.post('/', requireAuth, authorize('teacher'), uploadLessonAssets, createLessonController);
 
 router.get('/course/:courseId', requireAuth, getCourseLessonsController);
 
 router.get('/:id', requireAuth, getLessonController);
 
-router.patch('/:id', requireAuth, authorize('teacher', 'admin'), uploadLessonAssets, updateLessonController);
+router.patch('/:id', requireAuth, authorize('teacher'), uploadLessonAssets, updateLessonController);
 
-router.delete('/:id', requireAuth, authorize('teacher', 'admin'), deleteLessonController);
+router.delete('/:id', requireAuth, authorize('teacher'), deleteLessonController);
 
 export default router;

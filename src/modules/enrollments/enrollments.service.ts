@@ -26,9 +26,9 @@ export const enrollInCourse = async (
     return { statusCode: 400, data: { message: 'Invalid course id' } };
   }
 
-  // Fix #1: Allow students, teachers AND admins to enroll in courses
-  if (!['student', 'teacher', 'admin'].includes(viewer.role)) {
-    return { statusCode: 403, data: { message: 'Only students, teachers, and admins can enroll in courses' } };
+  // ✅ فقط Student وTeacher يمكنهم التسجيل — Admin مراقب فقط
+  if (!['student', 'teacher'].includes(viewer.role)) {
+    return { statusCode: 403, data: { message: 'Only students and teachers can enroll in courses' } };
   }
 
   const course = await Course.findById(courseId);
@@ -122,7 +122,8 @@ export const getCourseEnrollments = async (
   }
 
   const isOwner = String(course.instructor) === viewer.userId;
-  if (viewer.role !== 'admin' && !(viewer.role === 'teacher' && isOwner)) {
+  // ✅ فقط الأستاذ صاحب الدورة يرى enrollments دورته
+  if (!(viewer.role === 'teacher' && isOwner)) {
     return { statusCode: 403, data: { message: 'You are not allowed to view this course enrollments' } };
   }
 
@@ -149,13 +150,12 @@ export const getCourseEnrollments = async (
 };
 
 export const getTeacherStudents = async (viewer: ViewerContext): Promise<ServiceResult> => {
-  if (viewer.role !== 'teacher' && viewer.role !== 'admin') {
-    return { statusCode: 403, data: { message: 'Only teachers or admins can view this data' } };
+  // ✅ فقط الأستاذ يرى طلابه — Admin ليس لديه دورات
+  if (viewer.role !== 'teacher') {
+    return { statusCode: 403, data: { message: 'Only teachers can view their students' } };
   }
 
-  const courseQuery = viewer.role === 'admin'
-    ? {}
-    : { instructor: new Types.ObjectId(viewer.userId) };
+  const courseQuery = { instructor: new Types.ObjectId(viewer.userId) };
 
   const courses = await Course.find(courseQuery).select('_id title').lean();
   const courseMap = new Map(courses.map((course) => [String(course._id), course.title]));
