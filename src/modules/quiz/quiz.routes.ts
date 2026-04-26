@@ -6,6 +6,7 @@ import {
 	createQuizController,
 	deleteQuizController,
 	getCourseQuizzesController,
+	getStudentGradesController,
 	healthController,
 	submitQuizAttemptController,
 	updateQuizController,
@@ -15,6 +16,8 @@ import { createQuizSchema, updateQuizSchema } from './quiz-validation.js';
 const router = express.Router();
 
 router.get('/health', healthController);
+// ✅ درجات الطالب وشهاداته
+router.get('/my/grades', requireAuth, getStudentGradesController);
 router.get('/course/:courseId', requireAuth, getCourseQuizzesController);
 // ✅ فقط الأستاذ يُنشئ ويعدل ويحذف الاختبارات
 router.post('/', requireAuth, authorize('teacher'), validate(createQuizSchema), createQuizController);

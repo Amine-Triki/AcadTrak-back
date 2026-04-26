@@ -323,6 +323,33 @@ export const submitQuizAttempt = async (
   }
 
   // حساب النتيجة
+  // ✅ إذا كان اختبار نهائي → تحقق أن الطالب أكمل كل الدروس والاختبارات العادية
+  if (quiz.type === 'final_exam' && !canManage) {
+    const { LessonProgress } = await import('../progress/lessonProgress.model.js');
+    const studentObjId = new Types.ObjectId(viewer.userId);
+    const courseObjId  = new Types.ObjectId(String(quiz.course));
+
+    const [publishedLessons, regularQuizzes, completedLessons, passedQuizzes] = await Promise.all([
+      (await import('../lessons/lesson.model.js')).Lesson.countDocuments({
+        course: courseObjId, isPublished: true,
+      }),
+      Quiz.countDocuments({
+        course: courseObjId, isPublished: true, type: 'quiz',
+      }),
+      LessonProgress.countDocuments({ course: courseObjId, student: studentObjId }),
+      QuizAttempt.countDocuments({ course: courseObjId, student: studentObjId, passed: true }),
+    ]);
+
+    if (completedLessons < publishedLessons || passedQuizzes < regularQuizzes) {
+      return {
+        statusCode: 403,
+        data: {
+          message: `أكمل جميع الدروس والاختبارات أولاً للوصول للاختبار النهائي (${completedLessons}/${publishedLessons} درس، ${passedQuizzes}/${regularQuizzes} اختبار)`,
+        },
+      };
+    }
+  }
+
   const answers = quiz.questions.map((q, i) => {
     const rawAnswer = studentAnswers[i];
     const normalizedSelected = Array.isArray(rawAnswer)
@@ -396,5 +423,67 @@ export const submitQuizAttempt = async (
         message: '🎓 تهانينا! حصلت على شهادتك'
       }),
     },
+  };
+};
+export const getStudentGrades = async (viewer: ViewerContext): Promise<ServiceResult> => {
+  const attempts = await QuizAttempt.find({
+    student: new Types.ObjectId(viewer.userId),
+  })
+    .populate({ path: 'quiz',   select: 'title type passingScore course' })
+    .populate({ path: 'course', select: 'title' })
+    .sort({ takenAt: -1 })
+    .lean();
+
+  const certificates = await Certificate.find({
+    student: new Types.ObjectId(viewer.userId),
+  })
+    .populate({ path: 'course',    select: 'title instructor' })
+    .populate({ path: 'finalExam', select: 'title' })
+    .sort({ issuedAt: -1 })
+    .lean();
+
+  // ✅ جلب اسم الطالب واسم الأستاذ لكل شهادة
+  const { default: userModel } = await import('../users/user.model.js');
+
+  const studentDoc = await userModel
+    .findById(viewer.userId)
+    .select('firstName lastName userName')
+    .lean();
+
+  const studentName = studentDoc
+    ? `${studentDoc.firstName ?? ''} ${studentDoc.lastName ?? ''}`.trim() || studentDoc.userName
+    : 'الطالب';
+
+  // جلب أسماء الأساتذة لكل شهادة
+  const enrichedCerts = await Promise.all(
+    certificates.map(async (cert) => {
+      const courseDoc = cert.course as { _id?: unknown; title?: string; instructor?: unknown };
+      let instructorName = 'الأستاذ';
+
+      if (courseDoc?.instructor) {
+        const instructor = await userModel
+          .findById(courseDoc.instructor)
+          .select('firstName lastName userName')
+          .lean();
+        if (instructor) {
+          instructorName =
+            `${instructor.firstName ?? ''} ${instructor.lastName ?? ''}`.trim() ||
+            instructor.userName ||
+            'الأستاذ';
+        }
+      }
+
+      return {
+        ...cert,
+        studentName,
+        instructorName,
+        platformName: 'AcadTrak',
+      };
+    }),
+  );
+
+  return {
+    statusCode: 200,
+    data: { attempts, certificates: enrichedCerts },
   };
 };

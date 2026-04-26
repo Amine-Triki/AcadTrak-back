@@ -4,6 +4,7 @@ import {
   createQuiz,
   deleteQuiz,
   getQuizzesByCourse,
+  getStudentGrades,
   submitQuizAttempt,
   updateQuiz,
 } from './quiz.service.js';
@@ -100,4 +101,11 @@ export const deleteQuizController = async (req: AuthenticatedRequest, res: Respo
 
 export const healthController = (_req: Request, res: Response) => {
   return res.status(200).json({ message: 'Quiz module is running' });
+};
+
+export const getStudentGradesController = async (req: AuthenticatedRequest, res: Response) => {
+  const viewer = getViewerFromRequest(req);
+  if (!viewer) return res.status(401).json({ message: 'Unauthorized' });
+  const { statusCode, data } = await getStudentGrades(viewer);
+  return res.status(statusCode).json(data);
 };

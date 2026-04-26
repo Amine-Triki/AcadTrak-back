@@ -1,7 +1,7 @@
 import cloudinary from '../config/cloudinary.js';
 import type { UploadApiResponse } from 'cloudinary';
 
-export type ResourceType = 'image' | 'raw'; // raw = PDF
+export type ResourceType = 'image' | 'raw';
 
 export interface CloudinaryUploadResult {
   url:       string;
@@ -10,7 +10,6 @@ export interface CloudinaryUploadResult {
   bytes:     number;
 }
 
-// رفع ملف من buffer (بعد multer)
 export const uploadToCloudinary = (
   buffer: Buffer,
   folder: string,
@@ -21,16 +20,25 @@ export const uploadToCloudinary = (
       {
         folder,
         resource_type: resourceType,
-        // PDF: حفظه كـ raw
-        // Image: ضغط تلقائي
         ...(resourceType === 'image' && {
           transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+        }),
+        // ✅ Fix PDF: احفظ الملف بامتداد .pdf ليُحمَّل بشكل صحيح
+        ...(resourceType === 'raw' && {
+          format: 'pdf',
+          use_filename: false,
         }),
       },
       (error, result: UploadApiResponse | undefined) => {
         if (error || !result) return reject(error ?? new Error('Upload failed'));
+
+        // ✅ أضف fl_attachment لـ URL التحميل — يجبر المتصفح على تحميله كـ PDF
+        const downloadUrl = resourceType === 'raw'
+          ? result.secure_url.replace('/upload/', '/upload/fl_attachment/')
+          : result.secure_url;
+
         resolve({
-          url:      result.secure_url,
+          url:      downloadUrl,
           publicId: result.public_id,
           format:   result.format,
           bytes:    result.bytes,
@@ -41,7 +49,6 @@ export const uploadToCloudinary = (
   });
 };
 
-// حذف ملف من Cloudinary
 export const deleteFromCloudinary = async (
   publicId: string,
   resourceType: ResourceType = 'image',

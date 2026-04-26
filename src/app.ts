@@ -11,6 +11,7 @@ import quizRouter from "./modules/quiz/quiz.routes.js";
 import discussionsRouter from "./modules/discussions/discussions.routes.js";
 import contactRouter from "./modules/contact/contact.routes.js";
 import paymentRouter from "./modules/payments/payments.routes.js";
+import progressRouter from "./modules/progress/progress.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app: Application = express();
@@ -47,6 +48,7 @@ app.use("/api/quiz",        quizRouter);
 app.use("/api/discussions", discussionsRouter);
 app.use("/api/contact",     contactRouter);
 app.use("/api/payments",    paymentRouter);
+app.use("/api/progress",    progressRouter);
 
 app.use(errorHandler);
 

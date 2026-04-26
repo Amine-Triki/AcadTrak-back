@@ -424,23 +424,16 @@ export const getDashboardStats = async (viewer: { userId: string; role: UserRole
       const teacherCourses = await Course.find({ instructor: viewerId }).select("_id").lean();
       const courseIds = teacherCourses.map((course) => course._id);
 
-      if (courseIds.length === 0) {
-        return {
-          statusCode: 200,
-          data: {
-            role: "teacher",
-            stats: {
-              myCourses: 0,
-              enrolledStudents: 0,
-              publishedQuizzes: 0,
-            },
-          },
-        };
-      }
-
-      const [enrolledStudents, publishedQuizzes] = await Promise.all([
-        Enrollment.countDocuments({ course: { $in: courseIds } }),
-        Quiz.countDocuments({ course: { $in: courseIds }, isPublished: true }),
+      const [enrolledStudents, publishedQuizzes, myEnrollments, myCertificates] = await Promise.all([
+        courseIds.length > 0
+          ? Enrollment.countDocuments({ course: { $in: courseIds } })
+          : Promise.resolve(0),
+        courseIds.length > 0
+          ? Quiz.countDocuments({ course: { $in: courseIds }, isPublished: true })
+          : Promise.resolve(0),
+        // ✅ الأستاذ قد يكون مسجلاً في دورات أخرى كطالب
+        Enrollment.countDocuments({ student: viewerId }),
+        Certificate.countDocuments({ student: viewerId }),
       ]);
 
       return {
@@ -451,6 +444,9 @@ export const getDashboardStats = async (viewer: { userId: string; role: UserRole
             myCourses: courseIds.length,
             enrolledStudents,
             publishedQuizzes,
+            // إحصائيات الأستاذ كطالب
+            enrolledAsStudent: myEnrollments,
+            certificates: myCertificates,
           },
         },
       };
