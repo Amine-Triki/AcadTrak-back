@@ -401,11 +401,32 @@ export const getDashboardStats = async (viewer: { userId: string; role: UserRole
     const viewerId = new Types.ObjectId(viewer.userId);
 
     if (viewer.role === "admin") {
-      const [users, courses, payments] = await Promise.all([
+      const [users, courses, payments, paymentsByStatus] = await Promise.all([
         userModel.countDocuments({ deletedAt: null }),
         Course.countDocuments({}),
         Payment.countDocuments({}),
+        Payment.aggregate<{ _id: string; count: number }>([
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+            },
+          },
+        ]),
       ]);
+
+      const paymentStatusMap = {
+        pending: 0,
+        success: 0,
+        failed: 0,
+        expired: 0,
+      };
+
+      for (const item of paymentsByStatus) {
+        if (item._id in paymentStatusMap) {
+          paymentStatusMap[item._id as keyof typeof paymentStatusMap] = item.count;
+        }
+      }
 
       return {
         statusCode: 200,
@@ -415,6 +436,7 @@ export const getDashboardStats = async (viewer: { userId: string; role: UserRole
             users,
             courses,
             payments,
+            paymentsByStatus: paymentStatusMap,
           },
         },
       };
