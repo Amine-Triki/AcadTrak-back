@@ -6,7 +6,7 @@ import { env } from "../../config/env.js";
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  sameSite: "none" as const,
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
