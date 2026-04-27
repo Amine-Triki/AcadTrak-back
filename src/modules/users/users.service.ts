@@ -244,7 +244,18 @@ export const getPublicTeacherProfile = async (userId: string) => {
   try {
     const user = await userModel
       .findOne({ _id: userId, deletedAt: null })
-      .select("_id firstName lastName userName country role bio avatar createdAt");
+      .select("_id firstName lastName userName country role bio avatar createdAt")
+      .lean<{
+        _id: Types.ObjectId;
+        firstName: string;
+        lastName: string;
+        userName: string;
+        country: string;
+        role: UserRole;
+        bio?: string;
+        avatar?: string;
+        createdAt?: Date;
+      }>();
 
     if (!user) {
       return { data: { message: "User not found" }, statusCode: 404 };

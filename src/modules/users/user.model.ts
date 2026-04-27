@@ -12,6 +12,8 @@ lastName: string;
 email: string;
 password: string;
 deletedAt?: Date | null;
+createdAt?: Date;
+updatedAt?: Date;
 }
 
 const userSchema = new Schema<IUser>({
