@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { Course, getCoursePriceWithCoupon, type CourseDocument, type ICourseCoupon } from './course.model.js';
 import { courseSchema, updateCourseSchema, type CreateCourseInput, type UpdateCourseInput } from './course-validation.js';
 import { Enrollment } from '../enrollments/enrollment.model.js';
+import { CourseRating } from './courseRating.model.js';
 import { isValidObjectId } from '../../utils/mongo.js';
 import type { ServiceResult, ViewerContext } from '../../types/index.js';
 
@@ -113,6 +114,40 @@ const toCourseResponse = async (
 			  }
 			: {}),
 		canSeeHidden,
+	};
+};
+
+const syncCourseRatingStats = async (courseId: Types.ObjectId) => {
+	const [stats] = await CourseRating.aggregate<{
+		totalRatingsCount: number;
+		ratingsSum: number;
+		averageRating: number;
+	}>([
+		{ $match: { course: courseId } },
+		{
+			$group: {
+				_id: '$course',
+				totalRatingsCount: { $sum: 1 },
+				ratingsSum: { $sum: '$rating' },
+				averageRating: { $avg: '$rating' },
+			},
+		},
+	]);
+
+	const totalRatingsCount = stats?.totalRatingsCount ?? 0;
+	const ratingsSum = stats?.ratingsSum ?? 0;
+	const averageRating = totalRatingsCount > 0 ? Number((stats?.averageRating ?? 0).toFixed(2)) : 0;
+
+	await Course.findByIdAndUpdate(courseId, {
+		totalRatingsCount,
+		ratingsSum,
+		averageRating,
+	});
+
+	return {
+		totalRatingsCount,
+		ratingsSum,
+		averageRating,
 	};
 };
 
@@ -380,6 +415,126 @@ export const deleteOrHideCourse = async (
 		data: {
 			message: 'Paid course was hidden from catalog and remains accessible to enrolled students',
 			course: await toCourseResponse(course, true),
+		},
+	};
+};
+
+export const getMyCourseRating = async (
+	courseId: string,
+	viewer: ViewerContext,
+): Promise<ServiceResult> => {
+	if (!isValidObjectId(courseId)) {
+		return { statusCode: 400, data: { message: 'Invalid course id' } };
+	}
+
+	if (!['student', 'teacher'].includes(viewer.role)) {
+		return { statusCode: 403, data: { message: 'Only enrolled learners can rate courses' } };
+	}
+
+	const [course, enrollment] = await Promise.all([
+		Course.findById(courseId).select('_id averageRating totalRatingsCount ratingsSum'),
+		Enrollment.findOne({
+			student: new Types.ObjectId(viewer.userId),
+			course: new Types.ObjectId(courseId),
+		}).select('_id'),
+	]);
+
+	if (!course) {
+		return { statusCode: 404, data: { message: 'Course not found' } };
+	}
+
+	if (!enrollment) {
+		return { statusCode: 403, data: { message: 'You can rate only courses you are enrolled in' } };
+	}
+
+	const myRating = await CourseRating.findOne({
+		course: course._id,
+		student: new Types.ObjectId(viewer.userId),
+	}).select('rating comment updatedAt');
+
+	return {
+		statusCode: 200,
+		data: {
+			rating: myRating
+				? {
+					rating: myRating.rating,
+					comment: myRating.comment,
+					updatedAt: myRating.updatedAt,
+				}
+				: null,
+			courseRating: {
+				averageRating: course.averageRating,
+				totalRatingsCount: course.totalRatingsCount,
+				ratingsSum: course.ratingsSum,
+			},
+		},
+	};
+};
+
+export const rateCourse = async (
+	courseId: string,
+	payload: { rating: number; comment?: string },
+	viewer: ViewerContext,
+): Promise<ServiceResult> => {
+	if (!isValidObjectId(courseId)) {
+		return { statusCode: 400, data: { message: 'Invalid course id' } };
+	}
+
+	if (!['student', 'teacher'].includes(viewer.role)) {
+		return { statusCode: 403, data: { message: 'Only enrolled learners can rate courses' } };
+	}
+
+	const [course, enrollment] = await Promise.all([
+		Course.findById(courseId).select('_id'),
+		Enrollment.findOne({
+			student: new Types.ObjectId(viewer.userId),
+			course: new Types.ObjectId(courseId),
+		}).select('_id'),
+	]);
+
+	if (!course) {
+		return { statusCode: 404, data: { message: 'Course not found' } };
+	}
+
+	if (!enrollment) {
+		return { statusCode: 403, data: { message: 'You can rate only courses you are enrolled in' } };
+	}
+
+	const normalizedComment = payload.comment?.trim() ? payload.comment.trim() : undefined;
+	const ratingUpdate: {
+		$set: { rating: number; comment?: string };
+		$unset?: { comment: 1 };
+	} = {
+		$set: { rating: payload.rating },
+	};
+
+	if (normalizedComment) {
+		ratingUpdate.$set.comment = normalizedComment;
+	} else {
+		ratingUpdate.$unset = { comment: 1 };
+	}
+
+	const ratingDoc = await CourseRating.findOneAndUpdate(
+		{
+			course: new Types.ObjectId(courseId),
+			student: new Types.ObjectId(viewer.userId),
+		},
+		ratingUpdate,
+		{ upsert: true, new: true, setDefaultsOnInsert: true },
+	);
+
+	const courseRating = await syncCourseRatingStats(course._id as Types.ObjectId);
+
+	return {
+		statusCode: 200,
+		data: {
+			message: 'Course rating saved',
+			rating: {
+				rating: ratingDoc.rating,
+				comment: ratingDoc.comment,
+				updatedAt: ratingDoc.updatedAt,
+			},
+			courseRating,
 		},
 	};
 };

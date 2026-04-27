@@ -5,9 +5,11 @@ import { authorize } from "../../middleware/authorize.js";
 import { courseSchema, updateCourseSchema } from "./course-validation.js";
 import {
 	courseController,
+	getMyCourseRatingController,
 	healthController,
 	getAllController,
 	getOneController,
+	rateCourseController,
 	updateCourseController,
 	deleteCourseController,
 } from "./courses.controller.js";
@@ -20,6 +22,10 @@ router.get("/health", healthController);
 router.post("/", requireAuth, authorize("teacher"), validate(courseSchema), courseController);
 
 router.get("/", optionalAuth, getAllController);
+
+router.get('/:id/my-rating', requireAuth, authorize('student', 'teacher'), getMyCourseRatingController);
+
+router.post('/:id/rate', requireAuth, authorize('student', 'teacher'), rateCourseController);
 
 router.get("/:id", optionalAuth, getOneController);
 
