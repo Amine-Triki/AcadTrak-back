@@ -11,7 +11,7 @@ const getViewer = (req: AuthenticatedRequest) => {
 export const getCourseProgressController = async (req: AuthenticatedRequest, res: Response) => {
   const viewer = getViewer(req);
   if (!viewer) return res.status(401).json({ message: 'Unauthorized' });
-  const { statusCode, data } = await getCourseProgress(req.params.courseId, viewer);
+  const { statusCode, data } = await getCourseProgress(req.params.courseId as string, viewer);
   return res.status(statusCode).json(data);
 };
 
@@ -19,8 +19,8 @@ export const markLessonCompleteController = async (req: AuthenticatedRequest, re
   const viewer = getViewer(req);
   if (!viewer) return res.status(401).json({ message: 'Unauthorized' });
   const { statusCode, data } = await markLessonComplete(
-    req.params.courseId,
-    req.params.lessonId,
+    req.params.courseId as string,
+    req.params.lessonId as string,
     viewer,
   );
   return res.status(statusCode).json(data);

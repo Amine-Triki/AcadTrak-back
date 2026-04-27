@@ -102,7 +102,7 @@ export const createQuiz = async (
       title: payload.title.trim(),
       type: payload.type,
       order: payload.order,
-      questions: payload.questions.map(normalizeQuestion),
+      questions: payload.questions.map((q) => normalizeQuestion(q as QuizQuestionPayload)),
       passingScore: payload.passingScore,
       isPublished: payload.isPublished,
     });
@@ -216,7 +216,7 @@ export const updateQuiz = async (
   }
 
   if (payload.questions !== undefined) {
-    quiz.questions = payload.questions.map(normalizeQuestion);
+    quiz.questions = payload.questions.map((q) => normalizeQuestion(q as QuizQuestionPayload));
   }
 
   if (payload.passingScore !== undefined) {
